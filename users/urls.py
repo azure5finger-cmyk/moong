@@ -1,10 +1,10 @@
-from django.urls import path
+from django.urls import re_path
 from . import views
 
-app_name = 'users'
+app_name="users"
+
 
 urlpatterns = [
-    # 나중에 로그인/회원가입 등 추가
-    # path('login/', views.login, name='login'),
-    # path('signup/', views.signup, name='signup'),
+    re_path(r"^signup/$", views.signup_view, name="signup")
+
 ]
