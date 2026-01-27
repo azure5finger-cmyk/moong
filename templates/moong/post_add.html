@@ -1,0 +1,56 @@
+
+{# 이거 테스트 때문에 가상으로 대충 만든것입니다!! #}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>모임 만들기 - MOONG!</title>
+</head>
+
+<body>
+    {% include 'moong/navigation.html' %}
+
+    <div class="post-form-container" style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2>새 모임 만들기</h2>
+       <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+    
+            <input type="hidden" name="post_id" id="final-post-id">
+
+            <div class="form-group">
+                <label>제목:</label><br>
+                <input type="text" name="title" style="width: 100%;">
+            </div>
+
+            <!-- <div style="margin-bottom: 15px;">
+                <label>모임 장소 (지역 태그 기준):</label><br>
+                <input type="text" name="location" id="post-location" placeholder="예: 강남역, 홍대" style="width: 100%;">
+            </div> -->
+
+            <div style="margin-bottom: 15px;">
+                <label>글 내용 (키워드 태그 기준):</label><br>
+                <textarea name="content" id="post-content" rows="5" style="width: 100%;"></textarea>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label>사진 첨부 (여러 장 가능):</label><br>
+                <input type="file" name="images" id="image-input" multiple accept="image/*" style="width: 100%;">
+                <div id="image-list" style="font-size: 0.8rem; color: #666; margin-top: 5px;"></div>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>최대 인원:</label><br>
+                <input type="number" name="max_people" value="4">
+            </div>
+
+            <hr>
+            <div id="tags-section">
+                {% include 'moong/tags_add.html' %}
+            </div>
+            <hr>
+
+            <button type="submit" class="btn-submit">모임 최종 등록하기</button>
+        </form>
+    </div>
+
+</body>
+</html>

@@ -26,7 +26,7 @@ class Post(models.Model):
         verbose_name='모임 장소',
         db_column='location_id'
     )
-    models.CharField(max_length=255, verbose_name='모임 장소')
+    
     
     # 작성자
     author = models.ForeignKey(
@@ -42,7 +42,7 @@ class Post(models.Model):
     # 상태 관리
     is_closed = models.BooleanField(null=True, blank=True, default=False, verbose_name='마감 여부')
     is_cancelled = models.BooleanField(null=True, blank=True, default=False, verbose_name='폭파 여부')
-    save = models.BooleanField(null=True, blank=True, default=False, verbose_name='임시저장 여부')
+    complete = models.BooleanField(null=True, blank=True, default=False, verbose_name='임시저장 여부')
     
     # 제한 정보
     gender_restriction = models.IntegerField(
@@ -104,6 +104,7 @@ class Post(models.Model):
         """성별 제한 한글 표시"""
         gender_map = {0: '누구나', 1: '남성만', 2: '여성만'}
         return gender_map.get(self.gender_restriction, '누구나')
+
 
 
 class Participation(models.Model):
@@ -295,3 +296,41 @@ class PostHashtag(models.Model):
     
     def __str__(self):
         return f'{self.post.title} - #{self.hashtag.name}'
+    
+
+
+# 이미지(사진) 모델 ERD 기반으로 임시로 추가했습니다 !
+class Image(models.Model):
+    """게시글 이미지 모델"""
+    
+    # 게시글 id (ForeignKey로 Post와 연결)
+    post = models.ForeignKey(
+        'Post', 
+        on_delete=models.CASCADE, 
+        related_name='images', 
+        verbose_name='게시글 id',
+        db_column='post_id'
+    )
+    
+    # 순서 (기본값 0)
+    order = models.IntegerField(default=0, verbose_name='순서')
+    
+    # 이미지 파일 (VARCHAR -> ImageField)
+    image = models.ImageField(
+        upload_to='post_images/%Y/%m/%d/', 
+        null=True, 
+        blank=True, 
+        verbose_name='이미지'
+    )
+    
+    # 업로드 시간 (기본값 현재 시간)
+    created_time = models.DateTimeField(auto_now_add=True, null=True, verbose_name='업로드 시간')
+
+    class Meta:
+        ordering = ['order', 'created_time']
+        verbose_name = '게시글 이미지'
+        verbose_name_plural = '게시글 이미지'
+        db_table = 'image'
+
+    def __str__(self):
+        return f'{self.post.title} - 이미지 {self.order}'

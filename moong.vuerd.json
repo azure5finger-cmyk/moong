@@ -4,13 +4,13 @@
   "settings": {
     "width": 2000,
     "height": 2000,
-    "scrollTop": -2,
-    "scrollLeft": -137.26,
+    "scrollTop": -310,
+    "scrollLeft": -481,
     "zoomLevel": 0.91,
     "show": 431,
     "database": 4,
     "databaseName": "",
-    "canvasType": "@dineug/erd-editor/builtin-schema-sql",
+    "canvasType": "ERD",
     "language": 1,
     "tableNameCase": 4,
     "columnNameCase": 2,
@@ -927,7 +927,7 @@
       "Quzql9Un7eZ_UM9X8HLLq": {
         "id": "Quzql9Un7eZ_UM9X8HLLq",
         "tableId": "nRcoxDzOxlejRYE-Zb-J8",
-        "name": "save",
+        "name": "complete",
         "comment": "임시저장여부(0:임시저장 1:저장)",
         "dataType": "BOOLEAN",
         "default": "",
@@ -940,7 +940,7 @@
           "widthDefault": 60
         },
         "meta": {
-          "updateAt": 1769387601432,
+          "updateAt": 1769475092650,
           "createAt": 1769387428249
         }
       },
