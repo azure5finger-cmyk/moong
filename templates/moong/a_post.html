@@ -11,7 +11,11 @@
     </div>
     <br>
     <div class="post-content">
-        <h4 style="margin: 5px 0;">{{ post.title }}</h4>
+        <h4 style="margin: 5px 0;">
+            <a href="{% url 'moong:post_detail' post.id %}">
+                {{ post.title }}
+            </a>    
+        </h4>
         <p>{{ post.content }}</p>
     </div>
 
