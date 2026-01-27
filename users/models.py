@@ -3,6 +3,7 @@
 from django.contrib.auth.models import AbstractUser
 from locations.models import Location
 from django.core.validators import RegexValidator
+from django.db import models
 
 phone_regex = RegexValidator(
     regex = r"^010-\d{4}-\d{4}$",
@@ -45,6 +46,7 @@ class User(AbstractUser):
                                 help_text="기본 활동 지역",
                                 db_column='location_id',
                                 verbose_name='주소'
+    )
     
     # 활동 정보
     ddomoong = models.IntegerField(
@@ -89,7 +91,7 @@ class User(AbstractUser):
         """또뭉 감소"""
         if self.ddomoong > 0:
             self.ddomoong -= 1
-            self.save(update_fields=['ddomoong']))
+            self.save(update_fields=['ddomoong'])
 
     
 
