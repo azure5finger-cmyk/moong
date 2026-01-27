@@ -93,6 +93,12 @@ class User(AbstractUser):
             self.ddomoong -= 1
             self.save(update_fields=['ddomoong'])
 
+
+
+    email = models.EmailField(unique = True,
+                              blank=False,
+                              help_text="이메일 주소")
+
     
 
 
