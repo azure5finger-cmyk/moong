@@ -41,7 +41,7 @@ class Post(models.Model):
     # 상태 관리
     is_closed = models.BooleanField(null=True, blank=True, default=False, verbose_name='마감 여부')
     is_cancelled = models.BooleanField(null=True, blank=True, default=False, verbose_name='폭파 여부')
-    save = models.BooleanField(null=True, blank=True, default=False, verbose_name='임시저장 여부')
+    complete = models.BooleanField(null=True, blank=True, default=False, verbose_name='임시저장 여부')
     
     # 제한 정보
     gender_restriction = models.IntegerField(
@@ -115,6 +115,7 @@ class Post(models.Model):
     def has_images(self):
         """이미지 존재 여부"""
         return self.images.exists()
+
 
 
 class Participation(models.Model):
@@ -307,8 +308,9 @@ class PostHashtag(models.Model):
     def __str__(self):
         return f'{self.post.title} - #{self.hashtag.name}'
     
+
 class Image(models.Model):
-    """게시글 이미지 모델"""
+# """게시글 이미지 모델"""
     
     post = models.ForeignKey(
         'Post',
