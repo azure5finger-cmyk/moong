@@ -21,16 +21,19 @@ def main(request):
     # 검색하면 필터링해서 메인페이지에서 바로
     search = request.GET.get('search', '')
     
+    posts = Post.objects.filter(
+        complete=True,
+        is_cancelled=False,
+        moim_finished=False
+    ).prefetch_related('images', 'hashtags')
+
+    # 검색어가 있으면 추가 필터
     if search:
-        posts = Post.objects.filter(
-            complete=True,
-            content__icontains=search
-        ).prefetch_related('images', 'hashtags').order_by('-create_time')
-    else:
-        posts = Post.objects.filter(
-            complete=True
-        ).prefetch_related('images', 'hashtags').order_by('-create_time')
-    
+        posts = posts.filter(content__icontains=search)
+
+    # 정렬
+    posts = posts.order_by('-create_time')
+
     # 해시태그 리스트
     active_tags = Hashtag.objects.annotate(
         num_posts=Count('posts')
@@ -46,7 +49,12 @@ def main(request):
             location_keywords.add(name)
             
             # 2. "서울특별시" → "서울"
-            clean_name = name.replace('특별시', '').replace('광역시', '').replace('특별자치시', '').replace('특별자치도', '')
+            clean_name = name.replace('특별시', '').replace('광역시', '').replace('특별자치시', '').replace('특별자치도', '').replace('도', '')
+            # "전라남도" -> "전남", "경상북도" -> "경북" 처럼 앞글자+세번째글자 조합
+            if '남도' in name or '북도' in name:
+                short_name = name[0] + name[2] # 예: '전' + '남'
+                location_keywords.add(short_name)
+            
             location_keywords.add(clean_name)
             
             # 3. "강남구" → "강남"
@@ -62,20 +70,9 @@ def main(request):
     keyword_tags = []
     
     for tag in active_tags:
-        # 정확히 일치하거나 부분 일치 확인
-        is_location = False
-        
-        # 정확 일치
+        # '부분 일치'를 빼고 '정확히 일치'하는지만. 운동 이런것도 '동'으로 인식함 ㅜㅜ
+       
         if tag.name in location_keywords:
-            is_location = True
-        else:
-            # 부분 일치
-            for loc_keyword in location_keywords:
-                if tag.name in loc_keyword or loc_keyword in tag.name:
-                    is_location = True
-                    break
-        
-        if is_location:
             location_tags.append(tag)
         else:
             keyword_tags.append(tag)
@@ -130,7 +127,6 @@ def ai_tags(content, location):
     2. B (시/군/구): 마지막 글자 제외 (예: 순천, 강남, 의왕 등)
     3. C (읍/면/동): 전체 단어 그대로 (예: 정자동 등)
 
-
 답변:"""
 
     try:
@@ -144,7 +140,7 @@ def ai_tags(content, location):
         result = response.choices[0].message.content.strip()
         tags = [tag.strip().replace('#', '') for tag in result.split(',') if tag.strip()]
         
-        return tags[:6]  # 최대 5개만
+        return tags[:6]  # 최대 6개만
         
     except Exception as e:
         print(f"AI 해시태그 생성 오류: {e}")
@@ -169,7 +165,7 @@ def post_add(request):
                 print(f"sigungu: {location.sigungu}")  
                 print(f"eupmyeondong: {location.eupmyeondong}") 
 
-                location_text = {location.sido} | {location.sigungu} | {location.sigungu}
+                location_text = {location.sido} | {location.sigungu} | {location.eupmyeondong}
                 
             if location and not location.eupmyeondong:
                 fixed_location = Location.objects.filter(
@@ -215,6 +211,8 @@ def post_add(request):
                     # 임시저장된 글
                     post = Post.objects.get(id=temp_post_id, author=request.user)
                     post.complete = True
+                    post.content = form.cleaned_data.get('content')
+                    post.location = location
                     post.save()
 
                 else:
@@ -234,9 +232,12 @@ def post_add(request):
                 selected_tags = request.POST.getlist('tags')
                 
                 if selected_tags:
+                    post.hashtags.clear()
                     for tag_name in selected_tags:
-                        if tag_name.strip():
-                            tag, created = Hashtag.objects.get_or_create(name=tag_name.strip())
+                        tag_name = tag_name.strip()
+                        if tag_name:
+                            tag_name = tag_name.replace("#", "")
+                            tag, created = Hashtag.objects.get_or_create(name=tag_name)
                             post.hashtags.add(tag)
                 else:
                     tags = ai_tags(post.content, location_text)
@@ -261,11 +262,6 @@ def post_add(request):
             print("="*50)
 
             messages.error(request, '입력 내용을 확인하세요.')
-            # 각 필드별 에러도 메시지로 추가
-            for field, errors in form.errors.items():
-                for error in errors:
-                    messages.error(request, f'{field}: {error}')
-
             print("post_add 입력값 확인으로 빠짐!")
     else:
         form = PostForm()
@@ -402,6 +398,103 @@ def post_mod(request, post_id):
     }
 
     return render(request, 'moong/post_mod.html', context)
+
+# ==================== 게시글 삭제 ====================
+@login_required
+def post_delete(request, post_id):
+    print("post_delete 게시글 삭제 호출됨!")
+    post = get_object_or_404(Post, id=post_id)
+    
+    # 권한 체크
+    if post.author != request.user:
+        messages.error(request, '삭제 권한이 없습니다.')
+        return redirect('moong:post_detail', post_id=post_id)
+    
+    # POST 요청만 허용
+    if request.method == 'POST':
+        approved_count = post.get_approved_count()
+
+        # case1. 승인된 참여자가 없는 case
+        if approved_count == 0:
+            # 이미지 파일 삭제
+            for image in post.images.all():
+                if image.image:
+                    image.image.delete()
+            
+            post.delete()
+        # case2. 승인된 참여자가 있는 case
+        else:
+            print(f"게시글 폭파 처리 - (확정 참여자: {approved_count}명)으로 인해 진행")
+            post.is_cancelled = True
+            post.save()
+            messages.warning(request, f'확정 참여자({approved_count}명)가 있어 모임글이 비활성화 되었습니다.')
+            print("post_delete 폭파 처리 완료!")
+
+        messages.success(request, '게시글이 삭제되었습니다.')
+        return redirect('moong:main')
+    else:
+        # GET 요청은 거부
+        return redirect('moong:post_detail', post_id=post_id)
+       
+# ==================== 모집 확정 ====================
+@login_required
+def post_closed(request, post_id):
+    print("post_closed 모집 확정 호출됨!")
+    post = get_object_or_404(Post, id=post_id)
+    
+    # 권한 체크
+    if post.author != request.user:
+        messages.error(request, '모집 확정 권한이 없습니다.')
+        return redirect('moong:post_detail', post_id=post_id)
+    
+    # POST 요청만 허용
+    if request.method == 'POST':
+        approved_count = post.get_approved_count()
+
+        # # case1. 승인된 참여자가 없는 case
+        if approved_count == 0:
+            print(f"게시글 모집 확정 불가 - 확정 참여자 없음")
+            messages.warning(request, f'모임 참여자가 없어 모집 확정이 불가능합니다.')
+        # case2. 승인된 참여자가 있는 case
+        else:
+            print(f"게시글 모집 확정 처리 - (확정 참여자: {approved_count}명)으로 진행")
+            post.is_closed = True
+            post.save()
+            messages.warning(request, f'확정 참여자({approved_count}명) 상태로 모임이 확정되었습니다.')
+            print("게시글 모집 확정 완료!")
+
+        # 모임이 확정되던 아니던 post_detail로 
+        return redirect('moong:post_detail', post_id=post_id)
+    else:
+        # GET 요청은 거부
+        return redirect('moong:post_detail', post_id=post_id)
+
+# ==================== 모임 완료(확정 뒤에) ====================
+@login_required
+def moim_finished(request, post_id):
+    print("moim_finished 호출됨!")
+    post = get_object_or_404(Post, id=post_id)
+    
+    # 권한 체크
+    if post.author != request.user:
+        messages.error(request, '권한이 없습니다.')
+        return redirect('moong:post_detail', post_id=post_id)
+    
+    # 모집 확정되지 않은 모임은 완료 불가
+    if not post.is_closed:
+        messages.error(request, '모집이 확정되지 않은 모임입니다.')
+        return redirect('moong:post_detail', post_id=post_id)
+    
+    # POST 요청만 허용
+    if request.method == 'POST':
+        post.moim_finished = True  # 모임 완료 필드 (추가 필요)
+        post.save()
+        
+        messages.success(request, '모임이 완료 처리되었습니다.')
+        print("모임 완료 처리 완료!")
+        return redirect('moong:main')
+    
+    return redirect('moong:post_detail', post_id=post_id)    
 
 #참여 신청, 참여 취소
 @login_required
