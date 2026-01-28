@@ -409,4 +409,20 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
+<script>
+// 메시지 자동 사라짐 (3초 후)
+document.addEventListener("DOMContentLoaded", function() {
+    const messages = document.querySelectorAll('.message');
+    messages.forEach(message => {
+        setTimeout(() => {
+            message.style.transition = 'opacity 0.5s ease';
+            message.style.opacity = '0';
+            setTimeout(() => {
+                message.remove();
+            }, 500);
+        }, 3000); // 3초 후 사라짐
+    });
+});
+</script>
+
 {% endblock %}
