@@ -393,3 +393,41 @@ def post_mod(request, post_id):
     }
 
     return render(request, 'moong/post_mod.html', context)
+
+# ==================== 게시글 삭제 ====================
+@login_required
+def post_delete(request, post_id):
+    print("post_delete 게시글 삭제 호출됨!")
+    post = get_object_or_404(Post, id=post_id)
+    
+    # 권한 체크
+    if post.author != request.user:
+        messages.error(request, '삭제 권한이 없습니다.')
+        return redirect('moong:post_detail', post_id=post_id)
+    
+    # POST 요청만 허용
+    if request.method == 'POST':
+
+        approved_count = post.get_approved_count()
+
+        # case1. 승인된 참여자가 없는 case
+        if approved_count == 0:
+            # 이미지 파일 삭제
+            for image in post.images.all():
+                if image.image:
+                    image.image.delete()
+            
+            post.delete()
+
+        else:
+            print(f"게시글 폭파 처리 - (확정 참여자: {approved_count}명)으로 인해 진행")
+            post.is_cancelled = True
+            post.save()
+            messages.warning(request, f'확정 참여자({approved_count}명)가 있어 모임글이 비활성화 되었습니다.')
+            print("post_delete 폭파 처리 완료!")
+
+        messages.success(request, '게시글이 삭제되었습니다.')
+        return redirect('moong:main')
+    else:
+        # GET 요청은 거부
+        return redirect('moong:post_detail', post_id=post_id)

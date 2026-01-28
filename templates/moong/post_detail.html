@@ -10,6 +10,7 @@
 </head>
 
 <body>
+    {% include 'moong/navigation.html' %}
     <div class="post-container">
         <div class="post-header">
             <h4 style="margin: 5px 0;">
@@ -78,6 +79,14 @@
             <a href="{% url 'moong:main' %}" class="btn btn-secondary">목록으로</a>
             {% if user == post.author %}
                 <a href="{% url 'moong:post_mod' post.id %}" class="btn btn-primary"> 수정</a>
+
+                <form method="POST" action="{% url 'moong:post_delete' post.id %}" >
+                    {% csrf_token %}
+                    {% comment %} 참여자 확정 처리 개발 이후 추가 수정 필요  {% endcomment %}
+                    <button type="submit" onclick="return confirm('모집글을 삭제하시겠습니까?\r\n확정 참여자가 없는 경우에만 삭제가 가능합니다');">
+                        삭제
+                </button>
+            </form>
             {% endif %}
         </div>
     </div>
