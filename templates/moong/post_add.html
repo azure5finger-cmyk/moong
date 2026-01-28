@@ -9,8 +9,13 @@
 <body>
     {% include 'moong/navigation.html' %}
 
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
+
+        {% if temp_post_id %}
+        <input type="hidden" name="temp_post_id" value="{{ temp_post_id }}">
+        {% endif %}
+
         <p>
             <label>제목</label><br>
             {{ form.title }}
@@ -21,33 +26,172 @@
             <label>모임 날짜</label><br>
             {{ form.moim_date }}
             <br>
+            
             <!-- 장소 (3단계 선택) -->
-            <!-- <div class="form-group">
+            <div class="form-group">
                 <label>모임 장소</label>
                 <div class="location-group">
-                    <div>
-                        {{ form.sido }}
-                    </div>
-                    <div>
-                        {{ form.sigungu }}
-                    </div>
-                    <div>
-                        {{ form.location_id }}
-                    </div>
+                    <div>{{ form.sido }}</div>
+                    <div>{{ form.sigungu }}</div>
+                    <div>{{ form.eupmyeondong }}</div>
                 </div>
-            </div> -->
+            </div>
             <br>
+
             <label>시간</label><br>
             {{ form.moim_time }}
             <br>
+
+            <!-- 이미지 업로드 -->
+            <label>사진 첨부 (여러 장 가능)</label><br>
+            <input type="file" name="images" multiple accept="image/*">
+            <br><br>
         </p>
 
-        
-        <button type="submit">게시</button>
-        <button type="submit" name="save_temp">임시저장</button>
-        <!-- <a href="{% url 'moong:post_list' %}">취소</a> -->
+        <!-- AI 추천 해시태그 영역 (임시저장 후에만 보임) -->
+        {% if tags %}
+        <div id="tags-section">
+            {% include 'moong/tags_add.html' %}
+        </div>
+        {% endif %}
+
+        <!-- 버튼 -->
+        {% if temp_post_id %}
+            <!-- 임시저장 후: 게시 버튼만 -->
+            <button type="submit" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px;">게시하기</button>
+        {% else %}
+            <!-- 처음: 둘 다 보임 -->
+            <button type="submit">게시</button>
+            <button type="submit" name="save_temp">임시저장</button>
+        {% endif %}
     </form>
     
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            // 1. 초기 시/도 로드
+            loadSido();
+
+            // ⬇️ 임시저장 후 저장된 location 값 가져오기
+            const savedSido = "{{ form.sido.value|default:'' }}";
+            const savedSigungu = "{{ form.sigungu.value|default:'' }}";
+            const savedEupmyeondong = "{{ form.eupmyeondong.value|default:'' }}";
+
+            // 2. 시/도 선택 시 시/군/구 업데이트
+            const sidoSelect = document.getElementById('id_sido');
+            const sigunguSelect = document.getElementById('id_sigungu');
+            const eupmyeondongSelect = document.getElementById('id_eupmyeondong');
+
+            if (sidoSelect) {
+                sidoSelect.addEventListener('change', function() {
+                    const sido = this.value;
+                    console.log("시도 선택됨:", sido);
+
+                    sigunguSelect.innerHTML = '<option value="">시/군/구 선택</option>';
+                    eupmyeondongSelect.innerHTML = '<option value="">읍/면/동 선택</option>';
+
+                    if (sido) {
+                        loadSigungu(sido);
+                    }
+                });
+            }
+
+            // 3. 시/군/구 선택 시 읍/면/동 업데이트
+            if (sigunguSelect) {
+                sigunguSelect.addEventListener('change', function() {
+                    const sido = sidoSelect.value;
+                    const sigungu = this.value;
+                    console.log("시군구 선택됨:", sigungu);
+
+                    eupmyeondongSelect.innerHTML = '<option value="">읍/면/동 선택</option>';
+
+                    if (sido && sigungu) {
+                        loadEupmyeondong(sido, sigungu);
+                    }
+                });
+            }
+
+            // ⬇️ 임시저장 후 저장된 값 복원
+            if (savedSido) {
+                console.log("저장된 주소 복원:", savedSido, savedSigungu, savedEupmyeondong);
+                
+                // 시/도 로드 완료 후 값 복원
+                setTimeout(function() {
+                    sidoSelect.value = savedSido;
+                    
+                    if (savedSigungu) {
+                        loadSigungu(savedSido, function() {
+                            sigunguSelect.value = savedSigungu;
+                            
+                            if (savedEupmyeondong) {
+                                loadEupmyeondong(savedSido, savedSigungu, function() {
+                                    eupmyeondongSelect.value = savedEupmyeondong;
+                                });
+                            }
+                        });
+                    }
+                }, 500);
+            }
+        });
+
+        // 시/도 목록 로드
+        function loadSido() {
+            fetch('/locations/sido/')
+                .then(response => response.json())
+                .then(data => {
+                    const sidoSelect = document.getElementById('id_sido');
+                    if (!sidoSelect) return;
+                    
+                    sidoSelect.innerHTML = '<option value="">시/도 선택</option>';
+                    data.forEach(sido => {
+                        const option = document.createElement('option');
+                        option.value = sido;
+                        option.textContent = sido;
+                        sidoSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('시/도 로드 실패:', error));
+        }
+
+        // 시/군/구 로드 (콜백 추가)
+        function loadSigungu(sido, callback) {
+            fetch(`/locations/sigungu/?sido=${encodeURIComponent(sido)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const sigunguSelect = document.getElementById('id_sigungu');
+                    sigunguSelect.innerHTML = '<option value="">시/군/구 선택</option>';
+                    
+                    data.forEach(sigungu => {
+                        const option = document.createElement('option');
+                        option.value = sigungu;
+                        option.textContent = sigungu;
+                        sigunguSelect.appendChild(option);
+                    });
+                    
+                    if (callback) callback();
+                })
+                .catch(error => console.error('시/군/구 로드 실패:', error));
+        }
+
+        // 읍/면/동 로드 (콜백 추가)
+        function loadEupmyeondong(sido, sigungu, callback) {
+            fetch(`/locations/eupmyeondong/?sido=${encodeURIComponent(sido)}&sigungu=${encodeURIComponent(sigungu)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const eupmyeondongSelect = document.getElementById('id_eupmyeondong');
+                    eupmyeondongSelect.innerHTML = '<option value="">읍/면/동 선택</option>';
+                    
+                    data.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.name;
+                        option.textContent = item.name;
+                        eupmyeondongSelect.appendChild(option);
+                    });
+                    
+                    if (callback) callback();
+                })
+                .catch(error => console.error('읍/면/동 로드 실패:', error));
+        }
+    </script>
     <!-- <script>
         // 페이지 로드 시 시/도 목록 불러오기
         window.addEventListener('DOMContentLoaded', function() {
@@ -76,7 +220,7 @@
         document.getElementById('id_sido').addEventListener('change', function() {
             const sido = this.value;
             const sigunguSelect = document.getElementById('id_sigungu');
-            const locationSelect = document.getElementById('id_location_id');
+            const locationSelect = document.getElementById('id_eupmyeondong');
             
             // 시/군/구, 읍/면/동 초기화
             sigunguSelect.innerHTML = '<option value="">시/군/구 선택</option>';
@@ -102,7 +246,7 @@
         document.getElementById('id_sigungu').addEventListener('change', function() {
             const sido = document.getElementById('id_sido').value;
             const sigungu = this.value;
-            const locationSelect = document.getElementById('id_location_id');
+            const locationSelect = document.getElementById('id_eupmyeondong');
             
             // 읍/면/동 초기화
             locationSelect.innerHTML = '<option value="">읍/면/동 선택</option>';
@@ -114,7 +258,7 @@
                     .then(data => {
                         data.forEach(item => {
                             const option = document.createElement('option');
-                            option.value = item.id;  // Location의 id 값
+                            option.value = item.name;  // Location의 id 값
                             option.textContent = item.name;  // eupmyeondong 또는 sigungu
                             locationSelect.appendChild(option);
                         });
