@@ -193,16 +193,14 @@ def post_add(request):
                 tags = ai_tags(post.content, location_text)
 
                 messages.success(request, '임시저장 완료!')
-                
+                print("post_add 임시 저장 호출됨!")
+
                 # 그냥 form 그대로 넘김 (간단하게)
                 return render(request, 'moong/post_add.html', {
                     'form': form,
                     'tags': tags,
                     'temp_post_id': post.id
                 })
-                
-                messages.success(request, '임시저장')
-                print("post_add 임시 저장 호출됨!")
             else : 
 
                 temp_post_id = request.POST.get('temp_post_id')
@@ -257,7 +255,18 @@ def post_add(request):
             print("="*50)
 
             messages.error(request, '입력 내용을 확인하세요.')
+            # 각 필드별 에러도 메시지로 추가
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f'- {error}')
+
             print("post_add 입력값 확인으로 빠짐!")
+
+            context = {
+                'form': form,
+                'selected_location_id': request.POST.get('location'),
+            }
+            return render(request, 'moong/post_add.html', context)
     else:
         form = PostForm()
 
