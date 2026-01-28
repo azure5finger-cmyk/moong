@@ -1,11 +1,11 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404, reverse
 from django.db.models import Count
-from .models import Post, Hashtag, Image
+from .models import Post, Hashtag, Image, Comment
 from locations.models import Location
 from django.contrib.auth.decorators import login_required
-from .forms import PostForm
+from .forms import PostForm, CommentForm
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseRedirect, HttpResponseForbidden
 import openai
 import os
 from dotenv import load_dotenv
@@ -79,12 +79,15 @@ def main(request):
             location_tags.append(tag)
         else:
             keyword_tags.append(tag)
+
+    # comment_form = CommentForm()        
     
     return render(request, 'moong/main.html', {
         'posts': posts,
         'location_tags': location_tags[:10],  # 상위 10개만
         'keyword_tags': keyword_tags[:10],    # 상위 10개만
         'search': search,
+        # 'comment_form': comment_form,
     })
 
 
@@ -280,7 +283,12 @@ def post_detail(request, post_id):
     images = post.images.all()
     hashtags = post.hashtags.all()
 
-    return render(request, 'moong/post_detail.html', {'post': post})
+    comment_form = CommentForm()
+
+    return render(request, 'moong/post_detail.html', {'post': post,
+                                                      'comments':comments,
+                                                      'comment_form':comment_form,
+                                                      })
 
 # ==================== 게시글 수정 ====================
 def post_mod(request, post_id):
@@ -393,3 +401,58 @@ def post_mod(request, post_id):
     }
 
     return render(request, 'moong/post_mod.html', context)
+
+# ==================== 댓글 추가 ====================
+@login_required
+def comment_add(request, post_id):
+    if request.method != "POST":
+        return HttpResponseBadRequest()
+    
+    post = get_object_or_404(Post, id=post_id)
+    form = CommentForm(data=request.POST)
+
+    if form.is_valid():
+        comment = form.save(commit=False)
+        comment.post = post
+        comment.author = request.user
+        comment.save()
+        # url_next = reverse("moong:post_detail",
+        #                    kwargs={"post_id":comment.post_id}
+        #                    ) + f"#post-{comment.post.id}"
+        # return HttpResponseRedirect(url_next)
+    else:
+        return HttpResponseBadRequest("댓글 내용 오류")
+    
+    return redirect("moong:post_detail", post_id=post.id)
+
+
+# ==================== 댓글 삭제 ====================    
+@login_required
+def comment_delete(request, comment_id):
+    if request.method == "POST":
+        comment = get_object_or_404(Comment, id=comment_id)
+
+        if comment.author == request.user:
+            comment.delete()
+            url_next = reverse("moong:post_detail",
+                               kwargs={"post_id":comment.post_id}
+                               ) + f"#post-{comment.post.id}"
+            return HttpResponseRedirect(url_next)
+        else:
+            return HttpResponseForbidden("작성자만 댓글을 삭제할 수 있습니다.")
+    else:
+        return HttpResponseBadRequest()
+    
+# @login_required
+# def comment_delete(request, comment_id):
+#     if request.method != "POST":
+#         return HttpResponseBadRequest()
+
+#     comment = get_object_or_404(Comment, id=comment_id)
+
+#     if comment.author != request.user:
+#         return HttpResponseForbidden("작성자만 댓글을 삭제할 수 있습니다.")
+
+#     post_id = comment.post.id
+#     comment.delete()
+#     return redirect("moong:post_detail", post_id=post_id)    

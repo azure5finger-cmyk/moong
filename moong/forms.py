@@ -1,5 +1,5 @@
 from django import forms
-from .models import Post
+from .models import Post, Comment
 from locations.models import Location
 
 class PostForm(forms.ModelForm):
@@ -60,3 +60,13 @@ class PostForm(forms.ModelForm):
             self.fields["location"].queryset = Location.objects.filter(
                 id=location_id
             )
+
+
+
+class CommentForm(forms.ModelForm):
+    class Meta:
+        model = Comment
+        fields = ["content"]
+        widgets = {
+            "content":forms.TextInput(attrs = {"placeholder" : "댓글을 입력하세요."})
+        }
