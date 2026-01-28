@@ -136,6 +136,11 @@
         margin-top: 5px;
     }
     
+    .helper-text.locked {
+        color: #EF5350;
+        font-weight: 500;
+    }
+    
     .checkbox-group {
         display: flex;
         align-items: center;
@@ -180,6 +185,8 @@
 {% endblock %}
 
 {% block myBlock %}
+{% include 'moong/navigation.html' %}
+
 <div class="container">
     <!-- 헤더 -->
     <div class="header">
@@ -200,7 +207,7 @@
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
             
-            <!-- 프로필 이미지 -->
+            <!-- 프로필 이미지 (수정 가능) -->
             <div class="form-group">
                 <label class="form-label">📸 프로필 사진</label>
                 {% if user.profile_image %}
@@ -214,52 +221,68 @@
                 <p class="helper-text">JPG, PNG 파일만 가능 (최대 5MB)</p>
             </div>
             
-            <!-- 닉네임 -->
+            <!-- 닉네임 (수정 불가 - 표시만) -->
             <div class="form-group">
                 <label class="form-label">👤 닉네임</label>
-                {{ form.nick_name }}
-                <p class="helper-text">2-20자 이내, 특수문자 사용 불가</p>
-                {% if form.nick_name.errors %}
-                    <div class="message error">{{ form.nick_name.errors.0 }}</div>
-                {% endif %}
+                <input type="text" class="form-input" value="{{ user.nickname }}" disabled>
+                <p class="helper-text locked">🔒 닉네임은 변경할 수 없습니다</p>
             </div>
             
-            <!-- 이메일 -->
+            <!-- 이메일 (수정 불가 - 표시만) -->
             <div class="form-group">
                 <label class="form-label">📧 이메일</label>
-                {{ form.email }}
-                {% if form.email.errors %}
-                    <div class="message error">{{ form.email.errors.0 }}</div>
-                {% endif %}
+                <input type="email" class="form-input" value="{{ user.email }}" disabled>
+                <p class="helper-text locked">🔒 이메일은 변경할 수 없습니다</p>
             </div>
             
-            <!-- 자기소개 -->
+            <!-- 자기소개 (수정 가능) -->
             <div class="form-group">
                 <label class="form-label">✏️ 자기소개</label>
                 {{ form.bio }}
                 <p class="helper-text">간단한 자기소개를 작성해주세요 (최대 200자)</p>
             </div>
             
-            <!-- 전화번호 -->
+            <!-- 전화번호 (수정 불가 - 표시만) -->
             <div class="form-group">
                 <label class="form-label">📱 전화번호</label>
-                {{ form.phone }}
-                <p class="helper-text">하이픈(-) 없이 숫자만 입력 (예: 01012345678)</p>
-                {% if form.phone.errors %}
-                    <div class="message error">{{ form.phone.errors.0 }}</div>
-                {% endif %}
+                <input type="text" class="form-input" value="{{ user.phone }}" disabled>
+                <p class="helper-text locked">🔒 전화번호는 변경할 수 없습니다</p>
             </div>
             
-            <!-- 활동 지역 -->
+            <!-- 활동 지역 (수정 가능 - 3단계 선택) -->
             <div class="form-group">
                 <label class="form-label">📍 활동 지역</label>
-                {{ form.location }}
+                
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <div style="flex: 1;">
+                        <label for="sido" style="font-size: 12px; color: #757575;">시/도</label>
+                        <select id="sido" class="form-select">
+                            <option value="">시/도 선택</option>
+                        </select>
+                    </div>
+                    
+                    <div style="flex: 1;">
+                        <label for="sigungu" style="font-size: 12px; color: #757575;">시/군/구</label>
+                        <select id="sigungu" class="form-select">
+                            <option value="">시/군/구 선택</option>
+                        </select>
+                    </div>
+                    
+                    <div style="flex: 1;">
+                        <label for="eupmyeondong" style="font-size: 12px; color: #757575;">읍/면/동</label>
+                        <select id="eupmyeondong" name="location" class="form-select" required>
+                            <option value="">읍/면/동 선택</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <p class="helper-text">현재 지역: {{ user.location }}</p>
             </div>
             
-            <!-- 성별 -->
+            <!-- 성별 (수정 불가 - 표시만) + 공개 여부 (수정 가능) -->
             <div class="form-group">
                 <label class="form-label">⚧ 성별</label>
-                {{ form.gender }}
+                <input type="text" class="form-input" value="{{ user.get_gender_display }}" disabled>
                 <div class="checkbox-group">
                     {{ form.gender_visible }}
                     <label for="{{ form.gender_visible.id_for_label }}">프로필에 성별 공개</label>
@@ -274,4 +297,116 @@
         </form>
     </div>
 </div>
+
+<!-- ===================== -->
+<!-- AJAX 행정구역 JS -->
+<!-- ===================== -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  const sidoSelect = document.getElementById("sido");
+  const sigunguSelect = document.getElementById("sigungu");
+  const eupSelect = document.getElementById("eupmyeondong");
+
+  // 현재 사용자의 지역 정보
+  {% if user.location %}
+  const currentSido = "{{ user.location.sido }}";
+  const currentSigungu = "{{ user.location.sigungu }}";
+  const currentEupmyeondong = "{{ user.location.eupmyeondong }}";
+  const currentLocationId = "{{ user.location.id }}";
+  {% else %}
+  const currentSido = "";
+  const currentSigungu = "";
+  const currentEupmyeondong = "";
+  const currentLocationId = "";
+  {% endif %}
+
+  // 1️⃣ 시/도 로드
+  fetch("/locations/sido/")
+    .then(res => res.json())
+    .then(data => {
+      data.forEach(sido => {
+        const opt = document.createElement("option");
+        opt.value = sido;
+        opt.textContent = sido;
+        if (sido === currentSido) {
+          opt.selected = true;
+        }
+        sidoSelect.appendChild(opt);
+      });
+      
+      // 현재 시/도가 선택되어 있으면 시/군/구 로드
+      if (currentSido) {
+        sidoSelect.dispatchEvent(new Event('change'));
+      }
+    })
+    .catch(err => {
+      console.error("시/도 로드 실패", err);
+    });
+
+  // 2️⃣ 시/도 변경 → 시/군/구
+  sidoSelect.addEventListener("change", function () {
+    const sido = this.value;
+
+    // 하위 초기화
+    sigunguSelect.innerHTML = `<option value="">시/군/구 선택</option>`;
+    eupSelect.innerHTML = `<option value="">읍/면/동 선택</option>`;
+
+    if (!sido) return;
+
+    fetch(`/locations/sigungu/?sido=${encodeURIComponent(sido)}`)
+      .then(res => res.json())
+      .then(data => {
+        data.forEach(sigungu => {
+          const opt = document.createElement("option");
+          opt.value = sigungu;
+          opt.textContent = sigungu;
+          if (sigungu === currentSigungu) {
+            opt.selected = true;
+          }
+          sigunguSelect.appendChild(opt);
+        });
+        
+        // 현재 시/군/구가 선택되어 있으면 읍/면/동 로드
+        if (currentSigungu && sido === currentSido) {
+          sigunguSelect.dispatchEvent(new Event('change'));
+        }
+      })
+      .catch(err => {
+        console.error("시/군/구 로드 실패", err);
+      });
+  });
+
+  // 3️⃣ 시/군/구 변경 → 읍/면/동
+  sigunguSelect.addEventListener("change", function () {
+    const sigungu = this.value;
+    const sido = sidoSelect.value;
+
+    eupSelect.innerHTML = `<option value="">읍/면/동 선택</option>`;
+
+    if (!sido || !sigungu) return;
+
+    fetch(
+      `/locations/eupmyeondong/?sido=${encodeURIComponent(sido)}&sigungu=${encodeURIComponent(sigungu)}`
+    )
+      .then(res => res.json())
+      .then(data => {
+        data.forEach(obj => {
+          const opt = document.createElement("option");
+          opt.value = obj.id;       // ⭐ Location.id
+          opt.textContent = obj.name;
+          if (obj.id == currentLocationId) {
+            opt.selected = true;
+          }
+          eupSelect.appendChild(opt);
+        });
+      })
+      .catch(err => {
+        console.error("읍/면/동 로드 실패", err);
+      });
+  });
+
+});
+</script>
+
 {% endblock %}
