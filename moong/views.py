@@ -1,11 +1,11 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404, reverse
 from django.db.models import Count
-from .models import Post, Hashtag, Image
+from .models import Post, Hashtag, Image, Participation, Comment
 from locations.models import Location
 from django.contrib.auth.decorators import login_required
-from .forms import PostForm
+from .forms import PostForm, CommentForm
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseRedirect, HttpResponseForbidden
 import openai
 import os
 from dotenv import load_dotenv
@@ -76,12 +76,15 @@ def main(request):
             location_tags.append(tag)
         else:
             keyword_tags.append(tag)
+
+    # comment_form = CommentForm()        
     
     return render(request, 'moong/main.html', {
         'posts': posts,
         'location_tags': location_tags[:10],  # 상위 10개만
         'keyword_tags': keyword_tags[:10],    # 상위 10개만
         'search': search,
+        # 'comment_form': comment_form,
     })
 
 
@@ -193,16 +196,14 @@ def post_add(request):
                 tags = ai_tags(post.content, location_text)
 
                 messages.success(request, '임시저장 완료!')
-                
+                print("post_add 임시 저장 호출됨!")
+
                 # 그냥 form 그대로 넘김 (간단하게)
                 return render(request, 'moong/post_add.html', {
                     'form': form,
                     'tags': tags,
                     'temp_post_id': post.id
                 })
-                
-                messages.success(request, '임시저장')
-                print("post_add 임시 저장 호출됨!")
             else : 
 
                 temp_post_id = request.POST.get('temp_post_id')
@@ -214,6 +215,7 @@ def post_add(request):
                     post.content = form.cleaned_data.get('content')
                     post.location = location
                     post.save()
+
                 else:
                     # 바로 게시
                     post = form.save(commit=False)
@@ -226,7 +228,6 @@ def post_add(request):
                     images = request.FILES.getlist('images')
                     for index, img_file in enumerate(images):
                         Image.objects.create(post=post, image=img_file, order=index)
-
 
                 # 해시태그 저장
                 selected_tags = request.POST.getlist('tags')
@@ -247,8 +248,13 @@ def post_add(request):
                             post.hashtags.add(tag)
                 
                 messages.success(request, '게시 완료!')
+                Participation.objects.get_or_create(
+                    post=post,
+                    user=request.user,
+                    defaults={'status': 'APPROVED'}
+                )
                 return redirect('moong:post_detail', post_id=post.id)
-
+                
         else:
             print("="*50)
             print("폼 유효성 검사 실패!")
@@ -257,11 +263,23 @@ def post_add(request):
             print("="*50)
 
             messages.error(request, '입력 내용을 확인하세요.')
+            # 각 필드별 에러도 메시지로 추가
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f'- {error}')
+
             print("post_add 입력값 확인으로 빠짐!")
+
+            context = {
+                'form': form,
+                'selected_location_id': request.POST.get('location'),
+            }
+            return render(request, 'moong/post_add.html', context)
     else:
         form = PostForm()
 
     return render(request, 'moong/post_add.html', {'form': form})
+
 
 
 
@@ -271,12 +289,21 @@ def post_detail(request, post_id):
         Post.objects.select_related('author', 'location'),
         id=post_id
     )
-    
+    is_applied = False #is_applied 초기화
+    if request.user.is_authenticated:
+        is_applied = post.participations.filter(user=request.user).exists()
+
     comments = post.comments.select_related('author').order_by('create_time')
     images = post.images.all()
     hashtags = post.hashtags.all()
 
-    return render(request, 'moong/post_detail.html', {'post': post})
+    comment_form = CommentForm()
+
+    return render(request, 'moong/post_detail.html', {'post': post,
+                                                      'comments':comments,
+                                                      'comment_form':comment_form,
+                                                      'is_applied': is_applied,
+                                                      })
 
 # ==================== 게시글 수정 ====================
 def post_mod(request, post_id):
@@ -486,3 +513,77 @@ def moim_finished(request, post_id):
         return redirect('moong:main')
     
     return redirect('moong:post_detail', post_id=post_id)    
+
+#참여 신청, 참여 취소
+@login_required
+def post_apply(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    # 이미 신청했는지 확인 후 없으면 생성
+    participation, created =Participation.objects.get_or_create(post=post, user=request.user, defaults={'status': 'APPROVED'})
+    messages.success(request, '참여 신청이 완료되었습니다.')
+    return redirect('moong:post_detail', post_id=post.id) # 다시 상세페이지로!
+
+@login_required
+def post_cancel(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    # 해당 신청 내역 찾아서 삭제
+    participation = Participation.objects.filter(post=post, user=request.user)
+    if participation.exists():
+        participation.delete()
+        messages.success(request, '참여 신청이 취소되었습니다.')
+    return redirect('moong:post_detail', post_id=post.id) # 다시 상세페이지로!
+
+# ==================== 댓글 추가 ====================
+@login_required
+def comment_add(request, post_id):
+    if request.method != "POST":
+        return HttpResponseBadRequest()
+    
+    post = get_object_or_404(Post, id=post_id)
+    form = CommentForm(data=request.POST)
+
+    if form.is_valid():
+        comment = form.save(commit=False)
+        comment.post = post
+        comment.author = request.user
+        comment.save()
+        # url_next = reverse("moong:post_detail",
+        #                    kwargs={"post_id":comment.post_id}
+        #                    ) + f"#post-{comment.post.id}"
+        # return HttpResponseRedirect(url_next)
+    else:
+        return HttpResponseBadRequest("댓글 내용 오류")
+    
+    return redirect("moong:post_detail", post_id=post.id)
+
+
+# ==================== 댓글 삭제 ====================    
+@login_required
+def comment_delete(request, comment_id):
+    if request.method == "POST":
+        comment = get_object_or_404(Comment, id=comment_id)
+
+        if comment.author == request.user:
+            comment.delete()
+            url_next = reverse("moong:post_detail",
+                               kwargs={"post_id":comment.post_id}
+                               ) + f"#post-{comment.post.id}"
+            return HttpResponseRedirect(url_next)
+        else:
+            return HttpResponseForbidden("작성자만 댓글을 삭제할 수 있습니다.")
+    else:
+        return HttpResponseBadRequest()
+    
+# @login_required
+# def comment_delete(request, comment_id):
+#     if request.method != "POST":
+#         return HttpResponseBadRequest()
+
+#     comment = get_object_or_404(Comment, id=comment_id)
+
+#     if comment.author != request.user:
+#         return HttpResponseForbidden("작성자만 댓글을 삭제할 수 있습니다.")
+
+#     post_id = comment.post.id
+#     comment.delete()
+#     return redirect("moong:post_detail", post_id=post_id)    

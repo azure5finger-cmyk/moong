@@ -1,5 +1,5 @@
 from django import forms
-from .models import Post
+from .models import Post, Comment
 from locations.models import Location
 from django.utils import timezone
 
@@ -69,7 +69,14 @@ class PostForm(forms.ModelForm):
         cleaned_data = super().clean()
         moim_date = cleaned_data.get('moim_date')
         moim_time = cleaned_data.get('moim_time')
+        max_people = cleaned_data.get('max_people')
 
+        # 최대 인원 검증
+        if max_people is not None and max_people <= 0:
+            raise forms.ValidationError({
+                'max_people': '최대 인원은 0명 이상이어야 합니다.'
+            })
+        
         # 새 게시글 작성 시에만 검증 
         if not self.instance_pk:
             if moim_date and moim_time:
@@ -86,3 +93,12 @@ class PostForm(forms.ModelForm):
                 if moim_date == today and moim_time < current_time:
                     raise forms.ValidationError(f'모임 시간은 현재 시간({current_time.strftime("%H:%M")}) 이후여야 합니다.')        
         return cleaned_data
+
+
+class CommentForm(forms.ModelForm):
+    class Meta:
+        model = Comment
+        fields = ["content"]
+        widgets = {
+            "content":forms.TextInput(attrs = {"placeholder" : "댓글을 입력하세요."})
+        }
