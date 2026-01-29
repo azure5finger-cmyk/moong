@@ -69,7 +69,14 @@ class PostForm(forms.ModelForm):
         cleaned_data = super().clean()
         moim_date = cleaned_data.get('moim_date')
         moim_time = cleaned_data.get('moim_time')
+        max_people = cleaned_data.get('max_people')
 
+        # 최대 인원 검증
+        if max_people is not None and max_people <= 0:
+            raise forms.ValidationError({
+                'max_people': '최대 인원은 0명 이상이어야 합니다.'
+            })
+        
         # 새 게시글 작성 시에만 검증 
         if not self.instance_pk:
             if moim_date and moim_time:
