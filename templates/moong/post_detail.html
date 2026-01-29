@@ -1,7 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block myHead %}
+{% block myHead %}  
+<script src="{% static 'js/img_view.js' %}"></script>
 {% endblock %}
 
 {% block myBlock %}
@@ -46,12 +47,12 @@
                 {{ post.title }}
             </a> 
             </h4>
-            <div class="profile-image-wrapper">
+            <div class="post-profile-image-wrapper">
                 {% if post.author.profile_image %}
-                    <img src="{{ post.author.profile_image.url }}" 
-                    style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-                    작성자: {{ post.author.username }} | {{ post.create_time }}
+                    <img src="{{ post.author.profile_image.url }}" alt="프로필" 
+                    class="post-profile-image" onclick="openImageModal(this.src);">
                 {% endif %}
+                작성자: {{ post.author.username }} | {{ post.create_time }}
             </div>
         </div>
         <div class="post-info">
@@ -139,16 +140,9 @@
 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
 
-        <!-- <div class="post-comments" style="font-size: 1.3rem;">
-            <h6>댓글 {{ post.comments.count }}개</h6>
-            {% for comment in post.comments.all %}
-                <div style="margin-bottom: 5px;">
-                    <strong>{{ comment.author.nick_name }}</strong> {{ comment.content }}
-                </div>
-            {% endfor %}
-        </div> -->
 
-            {% include "moong/comments.html" %}
+        <!--댓글-->
+        {% include "moong/comments.html" with is_a_post=False %}
 
         <!-- 메시지 표시 -->
         {% if messages %}
@@ -189,4 +183,9 @@
             {% endif %}
         </div>
     </div>
+<!-- 이미지 모달 -->
+<div class="image-modal" id="imageModal" onclick="closeImageModal()">
+    <span class="close-modal">&times;</span>
+    <img class="modal-content" id="modalImage">
+</div>    
 {% endblock %}
