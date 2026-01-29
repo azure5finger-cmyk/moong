@@ -521,9 +521,34 @@ def moim_finished(request, post_id):
 def post_apply(request, post_id):
     post = get_object_or_404(Post, id=post_id)
     # 이미 신청했는지 확인 후 없으면 생성
-    participation, created =Participation.objects.get_or_create(post=post, user=request.user, defaults={'status': 'APPROVED'})
+    participation, created =Participation.objects.get_or_create(
+        post=post, 
+        user=request.user, 
+        defaults={'status': 'PENDING'}, 
+        #approve_time=models.DateTimeField(null=True, blank=True, verbose_name='승인 시간')
+        )
     messages.success(request, '참여 신청이 완료되었습니다.')
     return redirect('moong:post_detail', post_id=post.id) # 다시 상세페이지로!
+
+@login_required
+def participant_manage(request, participation_id):
+    participation = get_object_or_404(Participation, id=participation_id)
+    
+    # 주최자만 권한 허용
+    if request.user != participation.post.author:
+        return redirect('moong:post_detail', post_id=participation.post.id)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'approve':
+            participation.status = 'APPROVED' # 수락 시 승인 상태로 변경
+            participation.save()
+        elif action == 'reject':
+            # 거절 시 다시 신청할 수 있도록 아예 삭제하거나 상태를 REJECTED로 변경
+            participation.delete() 
+            
+    return redirect('moong:post_detail', post_id=participation.post.id)    
+
 
 @login_required
 def post_cancel(request, post_id):
