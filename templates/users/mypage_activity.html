@@ -1,11 +1,7 @@
 {% extends 'base.html' %}
-
 {% load static %}
 
 {% block title %}활동 이력 - 뭉이{% endblock %}
-
-{% block myHead %}
-{% endblock %}
 
 {% block myBlock %}
 {% include 'moong/navigation.html' %}
@@ -29,8 +25,8 @@
 
     <div class="content-section">
         <h2 class="section-title">🎯 내가 만든 모임</h2>
-        {% if my_posts %}
-            <div class="post-list">
+        <div class="post-list">
+            {% if my_posts %}
                 {% for post in my_posts %}
                 <div class="post-card">
                     <a href="{% url 'moong:post_detail' post.id %}">
@@ -51,17 +47,17 @@
                     {% endif %}
                 </div>
                 {% endfor %}
-            </div>
-        {% else %}
-            <div class="empty-state">
-                <div class="empty-state-icon">📝</div>
-                <div class="empty-state-text">아직 개최한 모임이 없어요</div>
-            </div>
-        {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">📝</div>
+                    <div class="empty-state-text">아직 개최한 모임이 없어요</div>
+                </div>
+            {% endif %}
+        </div>
 
-        <h2 class="section-title" style="margin-top: 40px;">🤝 내가 참여한 모임</h2>
-        {% if my_participations %}
-            <div class="post-list">
+        <h2 class="section-title second-title">🤝 내가 참여한 모임</h2>
+        <div class="post-list">
+            {% if my_participations %}
                 {% for participation in my_participations %}
                 <div class="post-card">
                     <a href="{% url 'moong:post_detail' participation.post.id %}">
@@ -72,7 +68,6 @@
                         <div class="post-info-item">📍 {{ participation.post.location|default:"장소 미정" }}</div>
                         <div class="post-info-item">👤 주최자: {{ participation.post.author.nick_name }}</div>
                     </div>
-                    
                     {% if participation.approve_time %}
                         <span class="status-badge status-open">✅ 참여 확정</span>
                     {% else %}
@@ -80,17 +75,17 @@
                     {% endif %}
                 </div>
                 {% endfor %}
-            </div>
-        {% else %}
-            <div class="empty-state">
-                <div class="empty-state-icon">🤝</div>
-                <div class="empty-state-text">아직 참여 신청한 모임이 없어요.</div>
-            </div>
-        {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">🤝</div>
+                    <div class="empty-state-text">아직 참여 신청한 모임이 없어요.</div>
+                </div>
+            {% endif %}
         </div>
+    </div>
 
     <div class="button-section">
-        <a href="{% url 'users:mypage' %}" class="back-button">마이페이지로 돌아가기</a>
+        <a href="{% url 'users:mypage' %}" class="btn btn-primary">← 마이페이지로 돌아가기</a>
     </div>
 </div>
 {% endblock %}
