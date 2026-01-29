@@ -112,6 +112,7 @@
                                     {% csrf_token %}
                                     <button type="submit">{% if post.is_full %}정원 초과{% else %}참여 신청 (재신청){% endif %}</button>
                                 </form>
+                                
                             {% endif %}
 
                         {% endwith %}

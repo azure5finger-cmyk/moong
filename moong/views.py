@@ -528,6 +528,8 @@ def post_apply(request, post_id):
         #approve_time=models.DateTimeField(null=True, blank=True, verbose_name='승인 시간')
         )
     messages.success(request, '참여 신청이 완료되었습니다.')
+
+
     return redirect('moong:post_detail', post_id=post.id) # 다시 상세페이지로!
 
 @login_required
