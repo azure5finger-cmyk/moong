@@ -17,8 +17,17 @@
             border: 2px solid #ddd;
         }
     </style>
+    {% if temp_post and temp_post.location %}
+        <div id="saved_location"
+            data-sido="{{ temp_post.location.sido }}"
+            data-sigungu="{{ temp_post.location.sigungu }}"
+            data-eupmyeondong="{{ temp_post.location.eupmyeondong }}"
+            data-location-id="{{ temp_post.location.id }}">
+        </div>
+    {% endif %}
     <script src="{% static 'js/img_view.js' %}"></script>
     <script src="{% static 'js/location_select.js' %}"></script>
+    
 {% endblock %}
 
 {% block myBlock %}
@@ -26,8 +35,8 @@
     <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
 
-        {% if temp_post_id %}
-        <input type="hidden" name="temp_post_id" value="{{ temp_post_id }}">
+        {% if temp_post %}
+            <input type="hidden" name="temp_post_id" value="{{ temp_post.id }}">
         {% endif %}
 
         <p>
@@ -72,7 +81,6 @@
             </select>
 
             <label for="eupmyeondong">읍/면/동</label>
-            <!-- ⭐ Django Form의 location 필드와 연결 -->
             <select id="eupmyeondong" name="location">
                 <option value="">읍/면/동 선택</option>
             </select>
@@ -123,4 +131,6 @@
             <button type="submit" name="save_temp">임시저장</button>
         {% endif %}
     </form>
+    <script src="{% static 'js/hashtags_add.js' %}"></script>
+    <!-- 셀프 해시태그 추가기능이 자바스크립트가 버튼보다 밑에 있어야 작동돼서 제것만 옮겼어요... -->
 {% endblock %}

@@ -25,8 +25,8 @@ class User(AbstractUser):
 
     profile_image = models.ImageField(
         upload_to='profile_images/%Y/%m/%d/',
-        blank=True, 
-        null=True,  
+        blank=True,
+        default='profile_images/custom_property.png',
         verbose_name='프로필 이미지'
     )
 
@@ -75,11 +75,17 @@ class User(AbstractUser):
         verbose_name='성별 공개'
     )
 
+    email = models.EmailField(
+        unique=True,
+        blank=False,
+        help_text="이메일 주소"
+    )
+
     class Meta:
         verbose_name = '사용자'
         verbose_name_plural = '사용자'
-        db_table = 'users'  # 테이블명을 'users'로 지정
-        ordering = ['-date_joined']  # 역순 정렬 추가  
+        db_table = 'users'
+        ordering = ['-date_joined']
 
     def __str__(self):
         return self.nick_name 
@@ -94,13 +100,7 @@ class User(AbstractUser):
         if self.ddomoong > 0:
             self.ddomoong -= 1
             self.save(update_fields=['ddomoong'])
-
-
-
-    email = models.EmailField(unique = True,
-                              blank=False,
-                              help_text="이메일 주소")
-    
+            
     def save(self, *args, **kwargs):
         if self.profile_image:
             img = Image.open(self.profile_image)

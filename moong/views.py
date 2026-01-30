@@ -15,10 +15,48 @@ load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
+# 찢긴 했는데 해시태그 분류에 좀 오류가 있어요! 수정해나가겠습니다.
+# ============ 메인 페이지 =============
+# 첫번째: location 모델에서 지역 키워드 추출하는 함수
+def get_location_keywords():
+    location_keywords = set()
+    loc_data = Location.objects.values_list('sido', 'sigungu', 'eupmyeondong')
+    
+    for loc in loc_data:
+        for name in filter(None, loc):
+          
+            location_keywords.add(name)
+            
+            # 서울특별시 → 서울
+            clean_name = name.replace('특별시', '').replace('광역시', '').replace('특별자치시', '').replace('특별자치도', '').replace('도', '')
+            
+            # 전라남도 → 전남
+            if '남도' in name or '북도' in name:
+                location_keywords.add(name[0] + name[2])
+            
+            location_keywords.add(clean_name)
+            
+        
+    
+    return location_keywords
 
-# 메인 페이지
+
+# 두번째: 해시태그 지역/키워드로 분류하는 함수
+def categorize_hashtags(active_tags, location_keywords):
+    location_tags = []
+    keyword_tags = []
+    
+    for tag in active_tags:
+        if tag.name in location_keywords:
+            location_tags.append(tag)
+        else:
+            keyword_tags.append(tag)
+    
+    return location_tags[:10], keyword_tags[:10]
+
+
+# url 연결된 찐 main 함수
 def main(request):
-    # 검색하면 필터링해서 메인페이지에서 바로
     search = request.GET.get('search', '')
     
     posts = Post.objects.filter(
@@ -27,65 +65,29 @@ def main(request):
         moim_finished=False
     ).prefetch_related('images', 'hashtags')
 
-    # 검색어가 있으면 추가 필터
     if search:
         posts = posts.filter(content__icontains=search)
 
-    # 정렬
     posts = posts.order_by('-create_time')
 
-    # 해시태그 리스트
     active_tags = Hashtag.objects.annotate(
         num_posts=Count('posts')
     ).filter(num_posts__gt=0).order_by('-num_posts')
     
-    # Location 모델에서 모든 지역 키워드 수집
-    location_keywords = set()
-    loc_data = Location.objects.values_list('sido', 'sigungu', 'eupmyeondong')
+    # 함수로 분리된거 불러오기~
+    location_keywords = get_location_keywords()
+    location_tags, keyword_tags = categorize_hashtags(active_tags, location_keywords)
     
-    for loc in loc_data:
-        for name in filter(None, loc):
-            # 1. 원본 추가
-            location_keywords.add(name)
-            
-            # 2. "서울특별시" → "서울"
-            clean_name = name.replace('특별시', '').replace('광역시', '').replace('특별자치시', '').replace('특별자치도', '').replace('도', '')
-            # "전라남도" -> "전남", "경상북도" -> "경북" 처럼 앞글자+세번째글자 조합
-            if '남도' in name or '북도' in name:
-                short_name = name[0] + name[2] # 예: '전' + '남'
-                location_keywords.add(short_name)
-            
-            location_keywords.add(clean_name)
-            
-            # 3. "강남구" → "강남"
-            if clean_name.endswith('구'):
-                location_keywords.add(clean_name[:-1])
-            elif clean_name.endswith('시'):
-                location_keywords.add(clean_name[:-1])
-            elif clean_name.endswith('군'):
-                location_keywords.add(clean_name[:-1])
-    
-    # 지역 태그와 키워드 태그 구분...
-    location_tags = []
-    keyword_tags = []
-    
-    for tag in active_tags:
-        # '부분 일치'를 빼고 '정확히 일치'하는지만. 운동 이런것도 '동'으로 인식함 ㅜㅜ
-       
-        if tag.name in location_keywords:
-            location_tags.append(tag)
-        else:
-            keyword_tags.append(tag)
-
     comment_form = CommentForm()        
-    
+
     return render(request, 'moong/main.html', {
         'posts': posts,
-        'location_tags': location_tags[:10],  # 상위 10개만
-        'keyword_tags': keyword_tags[:10],    # 상위 10개만
+        'location_tags': location_tags,
+        'keyword_tags': keyword_tags,
         'search': search,
         # 'comment_form': comment_form,  # 메인 페이지 댓글 작성폼 노출 여부
     })
+
 
 
 
@@ -107,9 +109,8 @@ def tag_feeds(request, tag_name):
 # ai 해시태그 쓰려면 pip install openai, pip install python-dotenv 해야합니다!
 # .env 파일 manage.py 파일과 같은 곳에 놓고, .env 안에 open ai key 넣으셔야 합니다.
 # .gitignore에도 .env 넣어주세욥~
-# AI 해시태그 생성 함수
+# ================ AI 해시태그 생성 함수 ======================
 def ai_tags(content, location):
-    """내용과 장소를 바탕으로 해시태그 5개 생성"""
     
     if not content and not location:
         return []
@@ -126,9 +127,10 @@ def ai_tags(content, location):
 - 지역 해시태그는 장소 정보에서 추출하고, 키워드 해시태그는 내용에서 추출
 - 키워드 해시태그 예: 맛집, 취미, 친목, 운동 등
 - 장소 해시태그 규칙(입력 데이터는 항상 A B C 3단계 형식):
-    1. A (광역시/도): 약칭으로 (예: 서울, 세종, 경기, 전북 등)
-    2. B (시/군/구): 마지막 글자 제외 (예: 순천, 강남, 의왕 등)
+    1. A (광역시/도): 약칭으로 (예: 서울, 세종, 경기, 전북, 충남 등)
+    2. B (시/군/구): 전체 단어 그대로 (예: 수원시 등)
     3. C (읍/면/동): 전체 단어 그대로 (예: 정자동 등)
+    **특별 규칙: B와 C가 중복되는 경우(예: '세종특별자치시 소담동 소담동'), A와 C만 사용하여 장소 해시태그 2개 생성, 나머지 4개는 키워드 해시태그로 채우기**
 
 답변:"""
 
@@ -149,6 +151,7 @@ def ai_tags(content, location):
         print(f"AI 해시태그 생성 오류: {e}")
         return []
 
+
 # ==================== 게시글 작성 ====================
 @login_required
 def post_add(request):
@@ -162,72 +165,51 @@ def post_add(request):
             post.author = request.user 
 
             location = form.cleaned_data.get("location")
+            location = get_fixed_location(location)
 
+            location_text = ""
             if location:
-                print(f"sido: {location.sido}")  
-                print(f"sigungu: {location.sigungu}")  
-                print(f"eupmyeondong: {location.eupmyeondong}") 
-
-                location_text = {location.sido} | {location.sigungu} | {location.eupmyeondong}
-                
-            if location and not location.eupmyeondong:
-                fixed_location = Location.objects.filter(
-                    sido=location.sido,
-                    sigungu=location.sigungu,
-                    eupmyeondong=location.sigungu
-                ).first()
-
-                if fixed_location:
-                    location = fixed_location
-
+                location_text = f"{location.sido} | {location.sigungu} | {location.eupmyeondong}"
+            
             post.location = location
             
+            temp_post_id = request.POST.get('temp_post_id')
+
+            # 임시 저장!
             if 'save_temp' in request.POST :
-                post.author = request.user
-                post.location = location
-                post.complete = False
-                post.save()
-                # 이미지 저장
-                images = request.FILES.getlist('images')
-                for index, img_file in enumerate(images):
-                    Image.objects.create(post=post, image=img_file, order=index)
+                # post 신규생성 or 있던거 가져오기
+                post, is_updated = get_or_create_post(
+                    temp_post_id, 
+                    request.user, 
+                    form, 
+                    location, 
+                    complete=False
+                )
+                # is_updated ture면 -> 갱신 : 이미지 지웠다가 재저장 해줘야해서 clear true
+                save_or_clear_images(post, request, clear_all=is_updated)
 
                 # AI 해시태그
                 tags = ai_tags(post.content, location_text)
 
                 messages.success(request, '임시저장 완료!')
                 print("post_add 임시 저장 호출됨!")
+                print(f"임시 저장한 location: {post.location}")
 
-                # 그냥 form 그대로 넘김 (간단하게)
                 return render(request, 'moong/post_add.html', {
                     'form': form,
                     'tags': tags,
-                    'temp_post_id': post.id
+                    'temp_post': post,
                 })
-            else : 
-
-                temp_post_id = request.POST.get('temp_post_id')
-                
-                if temp_post_id:
-                    # 임시저장된 글
-                    post = Post.objects.get(id=temp_post_id, author=request.user)
-                    post.complete = True
-                    post.content = form.cleaned_data.get('content')
-                    post.location = location
-                    post.save()
-
-                else:
-                    # 바로 게시
-                    post = form.save(commit=False)
-                    post.author = request.user
-                    post.location = location
-                    post.complete = True
-                    post.save()
-                    
-                    # 이미지 저장
-                    images = request.FILES.getlist('images')
-                    for index, img_file in enumerate(images):
-                        Image.objects.create(post=post, image=img_file, order=index)
+            # 최종 저장!
+            else :    
+                post, is_updated = get_or_create_post(
+                    temp_post_id, 
+                    request.user, 
+                    form, 
+                    location, 
+                    complete=True
+                )             
+                save_or_clear_images(post, request, clear_all=True)
 
                 # 해시태그 저장
                 selected_tags = request.POST.getlist('tags')
@@ -272,16 +254,80 @@ def post_add(request):
 
             context = {
                 'form': form,
-                'selected_location_id': request.POST.get('location'),
             }
             return render(request, 'moong/post_add.html', context)
-    else:
-        form = PostForm()
+    else: # GET 
+        #load_temp  = YES -> 임시 저장글 가져오기
+        #           = NO  -> 새글 작성
+        #           = NONE -> 임시 저장 글이 있는지 확인 -> post_add_confirm reqeust 
+        #                   -> 결정에 따라서 실제 게시글 작성 동작
+        load_temp = request.GET.get('load_temp')
+
+        if load_temp == 'yes':
+            # 임시저장 글 불러오기
+            temp_post = Post.objects.filter(
+                author=request.user,
+                complete=False
+            ).order_by('-create_time').first()
+            
+            if temp_post:
+                form = PostForm(instance=temp_post)
+                existing_images = temp_post.images.all().order_by('order')
+                existing_tags = [f"#{tag.name}" for tag in temp_post.hashtags.all()]
+                
+                messages.success(request, '임시저장된 글을 불러왔습니다.')
+
+                print(f"임시저장 - 불러온 location: {temp_post.location}")
+
+                context = {
+                    'form': form,
+                    'temp_post': temp_post,
+                    'existing_images': existing_images,
+                    'tags': existing_tags,
+                }
+                return render(request, 'moong/post_add.html', context)
+            else:
+                messages.warning(request, '불러올 임시저장 글이 없습니다.')
+                form = PostForm()
+        
+        elif load_temp == 'no':
+            # 새 글 작성
+            form = PostForm()
+        
+        else:
+            # 임시저장 글이 있는지 확인
+            print(f"임시저장 글이 있는지 확인")  
+            temp_post = Post.objects.filter(
+                author=request.user,
+                complete=False
+            ).order_by('-create_time').first()
+            
+            if temp_post:
+                print(f"임시저장 사용여부 호출")  
+                return redirect('moong:post_add_confirm')
+            else:
+                # 임시저장 글이 없으면 바로 작성 화면
+                form = PostForm()
 
     return render(request, 'moong/post_add.html', {'form': form})
 
-
-
+# ==================== 단순 임시 저장 여부 확인 ====================
+@login_required
+def post_add_confirm(request):
+    temp_post = Post.objects.filter(
+        author=request.user,
+        complete=False
+    ).order_by('-create_time').first()
+    
+    if temp_post:
+        context = {
+            'has_temp_post': True,
+            'temp_post': temp_post,
+        }
+        return render(request, 'moong/post_add_confirm.html', context)
+    else:
+        # 임시저장 글이 없으면 바로 작성 페이지로
+        return redirect('moong:post_add')
 
 # ==================== 게시글 상세 ====================
 def post_detail(request, post_id):
@@ -289,6 +335,7 @@ def post_detail(request, post_id):
         Post.objects.select_related('author', 'location'),
         id=post_id
     )
+    approved_participants = post.participations.filter(status='APPROVED').select_related('user')
     is_applied = False #is_applied 초기화
     if request.user.is_authenticated:
         is_applied = post.participations.filter(user=request.user).exists()
@@ -309,6 +356,7 @@ def post_detail(request, post_id):
                                                       'comments':comments,
                                                       'comment_form':comment_form,
                                                       'is_applied': is_applied,
+                                                      'approved_participants': approved_participants,
                                                       })
 
 # ==================== 게시글 수정 ====================
@@ -329,71 +377,32 @@ def post_mod(request, post_id):
             post = form.save(commit=False)
 
             location = form.cleaned_data.get("location")
-            
-            if location:
-                print(f"sido: {location.sido}")  
-                print(f"sigungu: {location.sigungu}")  
-                print(f"eupmyeondong: {location.eupmyeondong}")  
-                
-            # 2단계까지만 있는 지역 자동 보정 (세종 새롬동 케이스)
-            if location and not location.eupmyeondong:
-                fixed_location = Location.objects.filter(
-                    sido=location.sido,
-                    sigungu=location.sigungu,
-                    eupmyeondong=location.sigungu
-                ).first()
-                if fixed_location:
-                    location = fixed_location
-
+            location = get_fixed_location(location)
             post.location = location
 
-            if 'save_temp' in request.POST :
-                post.complete = False
-                post.save()
-                messages.success(request, '임시저장')
-                print("post_add 임시 저장 호출됨!")
-            else : 
-                post.complete = True
-                post.save()
+            post.complete = True
+            post.save()
 
-                # 기존 이미지 삭제 처리
-                delete_images = request.POST.getlist('delete_images')
-                if delete_images:
-                    Image.objects.filter(id__in=delete_images).delete()
-                    print(f"삭제된 이미지: {len(delete_images)}개")
-                
-                # 새 이미지 추가
-                images = request.FILES.getlist('images')
-                if images:
-                    # 기존 이미지의 최대 order 값 구하기
-                    last_image = post.images.order_by('-order').first()
-                    current_max_order = last_image.order if last_image else -1            
-                            
-                    for idx, image_file in enumerate(images):
-                        Image.objects.create(
-                            post=post,
-                            image=image_file,
-                            order=current_max_order + idx + 1
-                        )
-                    print(f"추가된 이미지: {len(images)}개")
-                try:
-                    # AI로 해시태그 자동 생성
-                    tags = ai_tags(post.content, '')   # 두번째인자 공백 아니고 원래 location
-
-                    # 해시태그 저장
-                    for tag_name in tags:
-                        if tag_name.strip():
-                            tag, created = Hashtag.objects.get_or_create(name=tag_name.strip())
-                            post.hashtags.add(tag)
-                        
-                except Exception as e:
-                    print(f"해시태그 생성 실패: {e}")
-                
-                messages.success(request, '게시글이 수정되었습니다.')
-                print("post_mod 수정 완료 호출됨!")
-
-                return redirect('moong:post_detail', post_id=post.id)
+            save_or_clear_images(post, request, clear_list='delete_images')
             
+            try:
+                # AI로 해시태그 자동 생성
+                tags = ai_tags(post.content, '')   # 두번째인자 공백 아니고 원래 location
+
+                # 해시태그 저장
+                for tag_name in tags:
+                    if tag_name.strip():
+                        tag, created = Hashtag.objects.get_or_create(name=tag_name.strip())
+                        post.hashtags.add(tag)
+                    
+            except Exception as e:
+                print(f"해시태그 생성 실패: {e}")
+            
+            messages.success(request, '게시글이 수정되었습니다.')
+            print("post_mod 수정 완료 호출됨!")
+
+            return redirect('moong:post_detail', post_id=post.id)
+        
         else:
             print("="*50)
             print("폼 유효성 검사 실패!")
@@ -409,7 +418,7 @@ def post_mod(request, post_id):
 
             print("post_mod 입력값 확인으로 빠짐!")
     else:
-        print("post_mod else 호출됨!")
+        print("post_mod GET 호출됨!")
         form = PostForm(instance=post)
 
     # 기존 이미지 목록
@@ -597,3 +606,89 @@ def comment_delete(request, comment_id):
 #     post_id = comment.post.id
 #     comment.delete()
 #     return redirect("moong:post_detail", post_id=post_id)    
+
+
+
+
+
+
+
+
+# ===============================================================================================================================================================================
+# ==================== 공통 사용용 def ============================================================================================================================================
+# 읍/면/동 위치보정 함수 별도 분기
+def get_fixed_location(location):
+    if not location:
+        return None
+    print(f"get_fixed_location - sido: {location.sido}")  
+    print(f"get_fixed_location - sigungu: {location.sigungu}")  
+    print(f"get_fixed_location - eupmyeondong: {location.eupmyeondong}")
+    
+    if location and not location.eupmyeondong:
+        print(f"주소 보정 함수 호출")
+        fixed_location = Location.objects.filter(
+            sido=location.sido,
+            sigungu=location.sigungu,
+            eupmyeondong=location.sigungu
+        ).first()
+        return fixed_location if fixed_location else location
+    
+    return location    
+
+# ==================== POST 신규 생성 or 기존거 가져오기====================   
+# return 값 - post, is_updated
+def get_or_create_post(temp_post_id, author, form, location, complete=False):
+    print(f"넘어온 데이터 확인 : temp_post_id: {temp_post_id}")
+    if temp_post_id:
+        try:
+            post = Post.objects.get(id=temp_post_id, author=author, complete=False)
+            print(f"기존 post 찾음! ID: {post.id}")
+            post.content = form.cleaned_data.get('content')
+            post.title = form.cleaned_data.get('title')
+            post.moim_date = form.cleaned_data.get('moim_date')
+            post.moim_time = form.cleaned_data.get('moim_time')
+            post.max_people = form.cleaned_data.get('max_people')
+            post.location = location
+            post.complete = complete
+            post.save()
+            return post, True  # 갱신일 때 
+        except Post.DoesNotExist:
+            pass
+    
+    # 새로 생성
+    post = form.save(commit=False)
+    post.author = author
+    post.location = location
+    post.complete = complete
+    post.save()
+    return post, False
+
+# ==================== 이미지 삭제 or 저장(flag따름) =======
+# clear_all     : 전체 삭제
+# clear_list    : 선택 삭제 
+def save_or_clear_images(post, request, clear_all=False, clear_list=None):
+    
+    if clear_list:
+        delete_images = request.POST.getlist(clear_list)
+        if delete_images:
+            Image.objects.filter(id__in=delete_images).delete()
+            print(f"선택 삭제된 이미지: {len(delete_images)}개")
+
+    if clear_all:
+        post.images.all().delete()
+
+    images = request.FILES.getlist('images')
+    if not images:
+        return  
+    
+    # 이미지 다 지우는거 아닌거 고려 
+    last_image = post.images.order_by('-order').first()
+    start_order = (last_image.order + 1) if last_image else 0
+    
+    for idx, img_file in enumerate(images):
+        Image.objects.create(
+            post=post, 
+            image=img_file, 
+            order=start_order + idx 
+        )
+    print(f"추가된 이미지: {len(images)}개")
