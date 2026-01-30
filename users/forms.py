@@ -123,7 +123,7 @@ class ProfileEditForm(forms.ModelForm):
             'profile_image': forms.FileInput(
                 attrs={
                     'class': 'file-input',
-                    'accept': 'image/jpeg,image/png'
+                    'accept': '.jpg,.jpeg,.png,image/jpeg,image/png'
                 }
             ),
             'bio': forms.Textarea(

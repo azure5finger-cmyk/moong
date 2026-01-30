@@ -9,9 +9,7 @@ pip install -r requirements.txt
 python manage.py migrate
 
 3) 지역 데이터 적재
-python manage.py load_regions
-# 또는 fixture 사용 시:
-# python manage.py loaddata regions
+python manage.py import_locations
 
 4) 관리자 계정 생성
 python manage.py createsuperuser
