@@ -1,7 +1,8 @@
 <div>
     댓글 {{ post.comments.count }}개
         <ul>
-            {% for comment in post.comments.all %}
+            {% for comment in comments|default:post.comments.all %}
+                {% if not comment.parent %}
                 <li style="margin-bottom: 12px;">
 
                     <!-- comment_list -->
@@ -97,6 +98,7 @@
                     {% endif %}                                 
                     
                 </li>
+                {% endif %}
             {% empty %}
                 <li>댓글이 없습니다.</li>
             {% endfor %}
