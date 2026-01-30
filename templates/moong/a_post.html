@@ -38,7 +38,8 @@
         {% endfor %}
     </div>
 
-    <hr class="a-post-divider">
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+    <!-- 댓글 리스트 -->
+    {% include "moong/comments.html" with is_a_post=True comments=post.comments.filter parent__isnull=True %}
 
-    {% include "moong/comments.html" %}
 </div>
