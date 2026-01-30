@@ -15,7 +15,6 @@ load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
-# 찢긴 했는데 해시태그 분류에 좀 오류가 있어요! 수정해나가겠습니다.
 # ============ 메인 페이지 =============
 # 첫번째: location 모델에서 지역 키워드 추출하는 함수
 def get_location_keywords():
@@ -35,9 +34,7 @@ def get_location_keywords():
                 location_keywords.add(name[0] + name[2])
             
             location_keywords.add(clean_name)
-            
-        
-    
+
     return location_keywords
 
 
@@ -89,8 +86,6 @@ def main(request):
     })
 
 
-
-
 # 해시태그별 게시물 보기
 def tag_feeds(request, tag_name):
     posts = Post.objects.filter(
@@ -105,51 +100,86 @@ def tag_feeds(request, tag_name):
 
 
 
-
 # ai 해시태그 쓰려면 pip install openai, pip install python-dotenv 해야합니다!
 # .env 파일 manage.py 파일과 같은 곳에 놓고, .env 안에 open ai key 넣으셔야 합니다.
 # .gitignore에도 .env 넣어주세욥~
-# ================ AI 해시태그 생성 함수 ======================
-def ai_tags(content, location):
+# ================ 해시태그 생성 함수 ======================
+# 지역 해시태그를 파싱으로 바꿔서 지역 해시태그, 키워드 해시태그 함수 나눴습니다!
+def extract_location_tags(location):
+    if not location or not isinstance(location, str):
+        return []
+
+    loc_tags = []
+    if location and isinstance(location, str):
+        # 오류 날때 ' | ' 이런 이상한 해시태그가 생겨서 없앴어요
+        clean_location = location.replace('|', ' ').strip()
+        parts = [p.strip() for p in clean_location.split() if p.strip()]
+        
+        if len(parts) > 0:
+            # 광역시/도 (이 부분이 문제가 많아서 아예 다 써놨어요)
+            a = parts[0]
+            short_names = {
+                "강원특별자치도": "강원", "경기도": "경기",
+                "경상남도": "경남", "경상북도": "경북", "광주광역시": "광주",
+                "대구광역시": "대구", "대전광역시": "대전", "부산광역시": "부산",
+                "서울특별시": "서울", "세종특별자치시": "세종", "울산광역시": "울산",
+                "인천광역시": "인천", "전라남도": "전남",
+                "전북특별자치도": "전북", "제주특별자치도": "제주",
+                "충청남도": "충남", "충청북도": "충북"
+            }
+            a_short = short_names.get(a, a[:2])
+            loc_tags.append(a_short)
+
+            # 나머지 주소
+            details = []
+            for p in parts[1:]:
+                p_clean = p.strip()
+                # ' | ' 문자나 이름 겹치지 않는 것만 추가
+                if p_clean and p_clean not in ['|', 'None', 'null'] and p_clean not in details:
+                    details.append(p_clean)
     
+            loc_tags.extend(details[:2])
+    return loc_tags
+
+# ai로 키워드 해시태그만 추출하기
+def ai_tags(content, location):
     if not content and not location:
         return []
-    
+
+    loc_tags = extract_location_tags(location)
+
+    needed_count = 6 - len(loc_tags)
     prompt = f"""
-다음 정보로 SNS 해시태그 6개를 만들어줘.
-장소: {location}
 내용: {content}
+위 내용을 바탕으로 SNS 키워드 해시태그를 {needed_count}개 만들어줘.
 
 조건:
 - # 기호 없이 단어나 명사만 출력
 - 쉼표(,)로 구분하고 한글로만 작성
-- 장소 해시태그 3개, 내용 해시태그 3개 만들기
-- 지역 해시태그는 장소 정보에서 추출하고, 키워드 해시태그는 내용에서 추출
-- 키워드 해시태그 예: 맛집, 취미, 친목, 운동 등
-- 장소 해시태그 규칙(입력 데이터는 항상 A B C 3단계 형식):
-    1. A (광역시/도): 약칭으로 (예: 서울, 세종, 경기, 전북, 충남 등)
-    2. B (시/군/구): 전체 단어 그대로 (예: 수원시 등)
-    3. C (읍/면/동): 전체 단어 그대로 (예: 정자동 등)
-    **특별 규칙: B와 C가 중복되는 경우(예: '세종특별자치시 소담동 소담동'), A와 C만 사용하여 장소 해시태그 2개 생성, 나머지 4개는 키워드 해시태그로 채우기**
+- 글 내용 기반으로 키워드 해시태그 생성
+- 예: 맛집, 취미, 카페, 운동 등
 
 답변:"""
-
     try:
         response = openai.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-        )
-        
+            messages=[
+                {"role": "system", "content": "해시태그 생성기"},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+        ) # 키워드 해시태그가 너무 엉뚱하게 나오면 temperature를 0에 가깝게 줄이고,
+          # 좀 더 창의적으로 나오길 원하시면 0.5 정도로 늘리면 돼요.
         
         result = response.choices[0].message.content.strip()
-        tags = [tag.strip().replace('#', '') for tag in result.split(',') if tag.strip()]
+        keyword_tags = [k.strip().replace('#', '') for k in result.split(',') if k.strip()]
         
-        return tags[:6]  # 최대 6개만
+        # 합치기~
+        total_tags = [t for t in (loc_tags + keyword_tags) if t and t != '|']
+        return total_tags[:6]
         
-    except Exception as e:
-        print(f"AI 해시태그 생성 오류: {e}")
-        return []
+    except Exception:
+        return [t for t in loc_tags if t != '|']
 
 
 # ==================== 게시글 작성 ====================
