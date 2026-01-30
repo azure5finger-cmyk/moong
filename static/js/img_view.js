@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log("이벤트 리스너 등록 완료");
     }
     
-    // 🔥 프로필 이미지 미리보기 기능 추가
+    // 프로필 이미지 미리보기 기능 추가
     const profileInput = document.getElementById('profileImageInput');
     const profilePreview = document.getElementById('profilePreview');
     
