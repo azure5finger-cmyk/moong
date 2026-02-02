@@ -1278,6 +1278,58 @@ html, body {
 }
 
 /* ========================================
+   게시글 작성/수정 폼 (사진 추가 버튼, 태그 추가 버튼)
+   ======================================== */
+
+/* 파일 선택 버튼 */
+#images {
+    display: none; /* 기본 버튼 숨기기 */
+}
+
+/* 커스텀 버튼 만들기 */
+label[for="images"] {
+    display: inline-block;
+    padding: 12px 24px;
+    background-color: var(--moong-primary);
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.3s;
+}
+
+label[for="images"]:hover {
+    background-color: var(--moong-secondary);
+}
+
+/* 태그 추가 버튼 */
+.add-tag-button {
+    padding: 10px 20px;
+    background-color: var(--moong-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+    margin-top: 12px;
+}
+
+.add-tag-button:hover {
+    background-color: var(--moong-secondary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+.add-tag-button:active {
+    transform: translateY(0);
+}
+
+
+
+
+/* ========================================
     게시글 상세 페이지
     ======================================== */
 .post-container {
@@ -1530,6 +1582,7 @@ html, body {
     padding: 0 24px 24px;
 }
 
+
 /* ========================================
     피드 카드 (a_post) 개선
     ======================================== */
@@ -1659,7 +1712,7 @@ html, body {
     justify-content: center;
     align-items: center;
     min-height: calc(100vh - 100px);
-    padding: 20px 20px **300px** 20px;
+    padding: 20px 20px 300px 20px;
 }
 
 #login form {
