@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
-{% block myBlock %}
+
 {% load static %}
 
 {% block myHead %}
   <script src="{% static 'js/location_select.js' %}"></script>
 {% endblock %}
 
+{% block myBlock %}
 {% include 'moong/navigation.html' %}
 
 <div id="signup">
