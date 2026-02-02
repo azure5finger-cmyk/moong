@@ -19,11 +19,7 @@
     {% include 'moong/navigation.html' %}
     <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
-
-        {% if temp_post %}
-            <input type="hidden" name="temp_post_id" value="{{ temp_post.id }}">
-        {% endif %}
-
+        
         <p>
             <label>제목</label><br>
             {{ form.title }}
@@ -124,7 +120,7 @@
         --> 
 
         <!-- 버튼 -->
-        {% if temp_post_id %}
+        {% if temp_post %}
             <!-- 임시저장 후: 게시 버튼만 -->
             <button type="submit">게시하기</button>
         {% else %}
