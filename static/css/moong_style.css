@@ -16,44 +16,35 @@
     --moong-text-light: #5D6D7E;
 }
 
-/* 전체 배경 - 번개 패턴 */
+/* html, body 전체 높이 설정 - 빈 영역 방지 */
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+/* 전체 배경 - moong5.png 풀스크린 */
 .moong-body {
-    background: linear-gradient(135deg, #3B7DD8 0%, #5A9BE8 50%, #7EB5E3 100%);
-    background-attachment: fixed;
     min-height: 100vh;
     position: relative;
 }
 
-/* 번개 패턴 오버레이 - custom_property 스타일 (부드럽고 자연스럽게) */
+/* 배경 이미지를 화면 전체에 고정 */
 .moong-body::before {
     content: '';
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cpath d='M50 15 L60 40 L52 40 L65 70 L42 45 L52 45 L40 15 Z' fill='%23ffffff' fill-opacity='0.18'/%3E%3C/svg%3E"),
-                        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cpath d='M80 50 L88 70 L82 70 L92 95 L75 73 L82 73 L72 50 Z' fill='%23A8D4F5' fill-opacity='0.15'/%3E%3C/svg%3E");
-    background-size: 150px 150px, 180px 180px;
-    background-position: 0 0, 60px 40px;
-    pointer-events: none;
-    z-index: 0;
+    inset: 0;
+    background: url('../images/moong5.png') center / cover no-repeat;
+    z-index: -2;
 }
 
-/* 두번째 번개 레이어 (살짝 다른 위치에 겹쳐서 풍성하게) */
+/* 글자 가독성을 위한 어두운 오버레이 */
 .moong-body::after {
     content: '';
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath d='M45 20 L52 38 L47 38 L56 58 L40 42 L47 42 L38 20 Z' fill='%23ffffff' fill-opacity='0.12'/%3E%3C/svg%3E"),
-                        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cpath d='M70 30 L80 55 L72 55 L85 85 L62 60 L72 60 L58 30 Z' fill='%237EB5E3' fill-opacity='0.1'/%3E%3C/svg%3E");
-    background-size: 200px 200px, 220px 220px;
-    background-position: 80px 30px, 20px 80px;
+    inset: 0;
+    background: rgba(10, 20, 50, 0.25);
     pointer-events: none;
-    z-index: 0;
+    z-index: -1;
 }
 
 /* 컨텐츠가 배경 위에 오도록 */
@@ -63,7 +54,7 @@
 }
 
 /* ========================================
-    네비게이션 - 배경과 통합 (투명)
+    네비게이션 - 완전 투명
     ======================================== */
 #navigation {
     display: flex !important;
@@ -71,6 +62,7 @@
     align-items: center !important;
     padding: 30px 20px 20px 65px !important; /* 상(30) 우(20) 하(20) 좌(65) */
     background: transparent !important;
+    backdrop-filter: none !important;
     border: none !important;
     box-shadow: none !important;
     min-height: 120px !important;
@@ -153,8 +145,8 @@
 
 /* 발바닥 아이콘 - 60px 고화질 */
 .nav-paw {
-    width: 60px;
-    height: 60px;
+    width: 50px;
+    height: 50px;
     object-fit: contain;
     vertical-align: middle;
     image-rendering: -webkit-optimize-contrast;
@@ -284,6 +276,7 @@
     margin: 20px auto !important;
     max-width: 600px;
     padding: 0 20px;
+    transform: translateX(50px);
 }
 
 .search-bar form {
@@ -1666,7 +1659,7 @@
     justify-content: center;
     align-items: center;
     min-height: calc(100vh - 100px);
-    padding: 40px 20px;
+    padding: 20px 20px **300px** 20px;
 }
 
 #login form {
@@ -1678,6 +1671,7 @@
     width: 100%;
     max-width: 420px;
     text-align: center;
+    margin-bottom: 150px;
 }
 
 #login h1 {
@@ -1743,7 +1737,15 @@
 #signup {
     display: flex;
     justify-content: center;
-    padding: 40px 20px;
+    padding: 20px 20px;
+}
+
+#signup .signup-logo{
+  text-align: center;
+  background: #ffffff;   /* 원하는 색 */
+  padding: 40px 0;       /* 위/아래 여백 */
+  border-radius: 16px;   /* 둥글게 */
+  margin-bottom: 12px;   /* 아래 간격 */
 }
 
 #signup form {
@@ -1751,16 +1753,16 @@
     border-radius: 24px;
     box-shadow: 0 8px 32px rgba(59, 125, 216, 0.2);
     border: 2px solid var(--moong-secondary);
-    padding: 50px 40px;
+    padding: 10px 40px;
     width: 100%;
     max-width: 500px;
 }
 
 #signup h1 {
     color: var(--moong-primary);
-    font-size: 32px;
+    font-size: 25px;
     font-weight: 700;
-    margin-bottom: 30px;
+    margin-bottom: 1px;
     text-align: center;
 }
 
@@ -1880,6 +1882,277 @@
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
+
+/* ========================================
+    댓글 섹션 스타일
+    ======================================== */
+
+/* 댓글 섹션 전체 컨테이너 */
+.comment-section {
+    margin-top: 10px;
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(59, 125, 216, 0.08);
+    font-size: 14px;
+    color: var(--moong-text);
+}
+
+/* 댓글 개수 텍스트 */
+.comment-section > span:first-child {
+    display: block;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--moong-primary);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--moong-bg-light);
+}
+
+/* 댓글 리스트 */
+.comment-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+/* 댓글 아이템 */
+.comment-item {
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--moong-bg-light);
+}
+
+.comment-item:last-child {
+    border-bottom: none;
+}
+
+/* 댓글 작성자 */
+.comment-author {
+    color: var(--moong-accent);
+    font-weight: 700;
+    font-size: 14px;
+}
+
+/* 님의 댓글 라벨 */
+.comment-label {
+    color: var(--moong-text-light);
+    font-size: 13px;
+}
+
+/* 댓글 내용 */
+.comment-text {
+    color: var(--moong-text);
+    line-height: 1.6;
+}
+
+/* 댓글 메타 정보 (시간) */
+.comment-meta {
+    color: var(--moong-text-light);
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 8px;
+}
+
+/* 프로필 이미지 스타일 개선 */
+.comment-profile {
+    border: 2px solid var(--moong-secondary) !important;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+/* 답글 달기 버튼 */
+.reply-toggle {
+    padding: 4px 10px;
+    background: var(--moong-bg-light);
+    border: 1px solid var(--moong-secondary);
+    border-radius: 12px;
+    color: var(--moong-accent);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 6px;
+}
+
+.reply-toggle:hover {
+    background: var(--moong-primary);
+    color: white;
+    border-color: var(--moong-primary);
+    transform: translateY(-1px);
+}
+
+/* 삭제 버튼 */
+.btn-delete {
+    padding: 4px 10px;
+    background: #FFEBEE;
+    border: 1px solid #EF9A9A;
+    border-radius: 12px;
+    color: #E53935;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 6px;
+}
+
+.btn-delete:hover {
+    background: #E53935;
+    color: white;
+    border-color: #E53935;
+    transform: translateY(-1px);
+}
+
+/* 대댓글 아이템 */
+.reply-item {
+    padding: 10px;
+    background: var(--moong-bg-light);
+    border-radius: 12px;
+    border-left: 3px solid var(--moong-secondary);
+}
+
+/* 대댓글 화살표 */
+.reply-arrow {
+    color: var(--moong-primary);
+    font-weight: 700;
+    margin-right: 4px;
+}
+
+/* 대댓글 프로필 */
+.reply-profile {
+    width: 20px !important;
+    height: 20px !important;
+}
+
+/* 대댓글 입력 폼 */
+.reply-form {
+    padding: 12px;
+    background: var(--moong-bg-light);
+    border-radius: 12px;
+    border: 2px solid var(--moong-secondary);
+}
+
+.reply-form form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.reply-form input[type="text"] {
+    flex: 1;
+    padding: 8px 12px;
+    border: 2px solid var(--moong-secondary);
+    border-radius: 20px;
+    font-size: 13px;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.reply-form input[type="text"]:focus {
+    outline: none;
+    border-color: var(--moong-primary);
+    box-shadow: 0 0 0 3px rgba(59, 125, 216, 0.15);
+}
+
+.btn-submit-reply {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, var(--moong-primary) 0%, var(--moong-primary-dark) 100%);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+}
+
+.btn-submit-reply:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 125, 216, 0.3);
+}
+
+/* 댓글 작성 섹션 */
+.comment-write-section {
+    margin-top: 12px !important;
+    margin-bottom: 0;
+    padding: 10px;
+    background: var(--moong-bg-light);
+    border-radius: 16px;
+    border: 2px solid var(--moong-secondary);
+}
+
+.comment-write-section form {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.comment-write-section input[type="text"] {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid var(--moong-secondary);
+    border-radius: 25px;
+    font-size: 14px;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.comment-write-section input[type="text"]:focus {
+    outline: none;
+    border-color: var(--moong-primary);
+    box-shadow: 0 0 0 4px rgba(59, 125, 216, 0.15);
+}
+
+.btn-submit-comment {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, var(--moong-primary) 0%, var(--moong-primary-dark) 100%);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(59, 125, 216, 0.2);
+}
+
+.btn-submit-comment:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(59, 125, 216, 0.4);
+}
+
+/* 댓글 없을 때 */
+.comment-empty {
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--moong-text-light);
+    font-size: 14px;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .comment-write-section form {
+        flex-direction: column;
+    }
+    
+    .btn-submit-comment {
+        width: 100%;
+    }
+    
+    .reply-form form {
+        flex-direction: column;
+    }
+    
+    .btn-submit-reply {
+        width: 100%;
+    }
+}
+
+
+
 
 /* ========================================
     참여 현황 박스 개선
