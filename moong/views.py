@@ -218,8 +218,17 @@ def post_add(request):
                 # is_updated ture면 -> 갱신 : 이미지 지웠다가 재저장 해줘야해서 clear true
                 save_or_clear_images(post, request, clear_all=False, clear_list='delete_images')
 
-                # AI 해시태그
+                # 1. AI 해시태그
                 tags = ai_tags(post.content, location_text)
+
+                # 2. 생성된 태그를 DB에 저장하고 post와 연결
+                post.hashtags.clear()
+                if tags:
+                    for tag_name in tags:
+                        tag_name = tag_name.strip().replace("#", "")
+                        if tag_name:
+                            tag, created = Hashtag.objects.get_or_create(name=tag_name)
+                            post.hashtags.add(tag)
 
                 messages.success(request, '임시저장 완료!')
                 print("post_add 임시 저장 호출됨!")
@@ -300,7 +309,7 @@ def post_add(request):
             if temp_post:
                 form = PostForm(instance=temp_post)
                 existing_images = temp_post.images.all().order_by('order')
-                existing_tags = [f"#{tag.name}" for tag in temp_post.hashtags.all()]
+                existing_tags = [tag.name for tag in temp_post.hashtags.all()] # 이름만 리스트로 넘겨주기
                 
                 messages.success(request, '임시저장된 글을 불러왔습니다.')
 
@@ -362,9 +371,6 @@ def post_detail(request, post_id):
         id=post_id
     )
     approved_participants = post.participations.select_related('user')
-    is_applied = False #is_applied 초기화
-    if request.user.is_authenticated:
-        is_applied = post.participations.filter(user=request.user).exists()
     
     user_participation = None
     if request.user.is_authenticated:
@@ -384,7 +390,20 @@ def post_detail(request, post_id):
     hashtags = post.hashtags.all()
 
     comment_form = CommentForm()
-
+    # 참여자 리스트 (승인 & 승인 리스트 & 대기 list)
+    approval_list = []
+    index_participant_list = []
+    index_indicator = False
+    index_participant = 0
+    print(user_participation)
+    for user in list(approved_participants):
+        for index, item in enumerate(list(approved_participants)):
+            if item == user and ((index + 1) > post.max_people):
+                index_participant = (index + 1) - post.max_people
+                index_indicator = True
+        index_participant_list.append(index_participant)
+        approval_list.append(index_indicator)
+    
     # 또뭉 참여자 리스트 (모임 완료 + COMPLETED + 본인 제외)
     ddomoong_participants = []
     if post.moim_finished and request.user.is_authenticated:
@@ -402,12 +421,13 @@ def post_detail(request, post_id):
         'post': post,
         'comments':comments,
         'comment_form':comment_form,
-        'is_applied': is_applied,
-        'approved_participants': approved_participants,
+        'approved_participants_and_approval': zip(approved_participants,approval_list, index_participant_list),
         'user_participation': user_participation,
-        'ddomoong_participants': ddomoong_participants,
+        'index_participant': index_participant,
+                'ddomoong_participants': ddomoong_participants,
     }
-
+    
+    
     return render(request, 'moong/post_detail.html', context)
 
 # ==================== 게시글 수정 ====================
