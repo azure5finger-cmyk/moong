@@ -133,49 +133,48 @@
                 <span>참여 현황: <strong>{{ post.get_approved_count }}</strong> / {{ post.max_people }}명</span>
                 {% if post.is_full %}
                     <span style="color: red; font-weight: bold;">[마감]</span>
+                    <span>대기자 수: <strong>{{ post.get_wait_count }}</strong></span>
                 {% endif %}
             </div>
 
             <div>
-                <details>
-                    <summary>
-                        참여자 목록 보기 (현재 {{ approved_participants.count }}명)
-                    </summary>
-        
-                    <ul>
-                        {% for participant in approved_participants %}
-                            <li>
-                                {{ participant.user.nick_name|default:participant.user.username }}
-                                {% if user == post.author %}
-                                    <form action="{% url 'moong:participant_manage' participant.id %}" method="post">
-                                        {% csrf_token %}
-                                        {% if participant.status == 'APPROVED' %}
-                                            <button type="submit" name="action_complete" value="reject"> 승인취소 </button> 
-                                        {% else %}
-                                            <button type="submit" name="action_complete" value="approve"> 승인 </button>
-                                        {% endif %}                 
-                                    </form>
-                                {% endif %}   
-                                {% if participant.user == post.author %}
-                                    (주최자)
-                                {% else %}
-                                    {% comment %} 주최자가 아닐 때 {% endcomment %}
-                                {% endif %}
-                                
-                                {% if participant.status == 'APPROVED' %}
+                <ul>
+                    {% for participant,approval,index in approved_participants_and_approval %}
+                        <li>
+                            {{ participant.user.nick_name|default:participant.user.username }}
+                            {% if user == post.author %}
+                                <form action="{% url 'moong:participant_manage' participant.id %}" method="post">
+                                    {% csrf_token %}
+                                    {% if participant.status == 'APPROVED' %}
+                                        <button type="submit" name="action_complete" value="reject"> 승인취소 </button> 
+                                    {% else %}
+                                        <button type="submit" name="action_complete" value="approve"> 승인 </button>
+                                    {% endif %}                 
+                                </form>
+                            {% endif %}   
+                            {% if participant.user == post.author %}
+                                (주최자)
+                            {% else %}
+                                {% comment %} 주최자가 아닐 때 {% endcomment %}
+                            {% endif %}
+                            
+                            {% if participant.status == 'APPROVED' %}
+                                {% if not approval %}
                                     <small>- {{ participant.create_time|date:"Y-m-d H:i" }} 참여 완료</small>
+                                {% else %}
+                                    <small>- {{ participant.create_time|date:"Y-m-d H:i" }} 대기자 {{ index }}</small>
                                 {% endif %}
-                                {% if participant.status == 'PENDING' %}
-                                    <small>- {{ participant.create_time|date:"Y-m-d H:i" }} 참여 신청 중</small>
-                                {% endif %}
+                            {% endif %}
+                            {% if participant.status == 'PENDING' %}
+                                <small>- {{ participant.create_time|date:"Y-m-d H:i" }} 참여 신청 중</small>
+                            {% endif %}
 
-                                {% comment %} 체크 박스 리스트를 만들어서 체크를 해야함  {% endcomment %}
-                            </li>
-                        {% empty %}
-                            <li>참여자가 없습니다.</li>
-                        {% endfor %}
-                    </ul>
-                </details>
+                            {% comment %} 체크 박스 리스트를 만들어서 체크를 해야함  {% endcomment %}
+                        </li>
+                    {% empty %}
+                        <li>참여자가 없습니다.</li>
+                    {% endfor %}
+                </ul>
             </div>
         </div>
         
