@@ -85,7 +85,7 @@
     height: 100px;
     width: auto;
     object-fit: contain;
-    transform: scale(1.5);
+    transform: scale(1.8);
     transition: transform 0.3s ease;
     image-rendering: -webkit-optimize-contrast;
     image-rendering: crisp-edges;
@@ -103,6 +103,22 @@
     gap: 0.5rem !important;
     flex-wrap: nowrap !important;
     white-space: nowrap !important;
+}
+
+/* 네비게이션 로고 밑의 사이트 설명 */
+.nav-logo {
+    position: relative;
+    display: inline-block;
+}
+
+.nav-tagline {
+    position: absolute; 
+    bottom: -4px; 
+    left: 77%;
+    transform: translateX(-50%); 
+    font-size: 14px;
+    color: #fafafa;
+    white-space: nowrap;
 }
 
 /* 네비게이션 링크 스타일 */
