@@ -187,8 +187,8 @@ def mypage_participated_list(request):
         user=request.user
     ).select_related('post', 'post__author').order_by('-create_time')  # ✅ create_time으로 수정!
     
-    # 페이지네이션 (10개씩)
-    paginator = Paginator(my_participations, 10)
+    # 페이지네이션 (5개씩)
+    paginator = Paginator(my_participations, 5)
     page_number = request.GET.get('page', 1)
     
     try:

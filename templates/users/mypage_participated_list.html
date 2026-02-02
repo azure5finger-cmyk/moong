@@ -33,11 +33,20 @@
                         <div class="post-info-item">📍 {{ participation.post.location|default:"장소 미정" }}</div>
                         <div class="post-info-item">👤 주최자: {{ participation.post.author.nick_name }}</div>
                     </div>
-                    {% if participation.approve_time %}
+                    
+                    {# 상태 표시 - status 필드 기반으로 정확하게 표시 #}
+                    {% if participation.status == 'APPROVED' %}
                         <span class="status-badge status-open">✅ 참여 확정</span>
-                    {% else %}
-                        <span class="status-badge status-cancelled">⏳ 승인 대기 중</span>
+                    {% elif participation.status == 'PENDING' %}
+                        <span class="status-badge status-waiting">⏳ 승인 대기중</span>
+                    {% elif participation.status == 'REJECTED' %}
+                        <span class="status-badge status-cancelled">❌ 참여 거절</span>
+                    {% elif participation.status == 'CANCELLED' %}
+                        <span class="status-badge status-cancelled">🚫 참여 취소</span>
+                    {% elif participation.status == 'COMPLETED' %}
+                        <span class="status-badge status-completed">🎉 모임 완료</span>
                     {% endif %}
+                    
                     <br><br>
                     {% include "moong/ddo_moong.html" with participants=participation.other_participants %}
                 </div>
