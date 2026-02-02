@@ -93,13 +93,12 @@ def main(request):
 
 
 # 해시태그별 게시물 보기
+# 해시태그 별은 완료된 POST도 확인이 가능하다!
 def tag_feeds(request, tag_name):
     now = datetime.now()
     posts = Post.objects.filter(
         hashtags__name=tag_name,
         complete=True,
-        is_cancelled=False,
-        moim_finished=False,
     ).exclude(
         Q(moim_date__lt=now.date()) |
         Q(moim_date=now.date(), moim_time__lt=now.time())
