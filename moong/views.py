@@ -294,6 +294,7 @@ def post_form(request, post_id=None):
                 
                 
                 if not is_edit:
+                    # 게시글 작성자는 게시글 작성과 동시에 승인이기에 승인 & 승인시간 처리가 필요하다
                     Participation.objects.get_or_create(
                         post=post,
                         user=request.user,
