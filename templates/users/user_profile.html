@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ profile_user.nick_name }}님의 프로필 - 뭉이{% endblock %}
+
+{% block myHead %}
+<script src="{% static 'js/img_view.js' %}"></script>
+{% endblock %}
+
+{% block myBlock %}
+{% include 'moong/navigation.html' %}
+
+<div class="mypage_container">
+    <div class="mypage_header">
+        <div class="mypage_header-title">{{ profile_user.nick_name }}님의 프로필</div>
+    </div>
+
+    <div class="profile-section">
+        <div class="profile-header">
+            <div class="profile-image-wrapper">
+                {% if profile_user.profile_image %}
+                    <img src="{{ profile_user.profile_image.url }}" alt="프로필" class="profile-image" onclick="openImageModal(this.src)">
+                {% else %}
+                    <img src="https://via.placeholder.com/100?text=👤" alt="프로필" class="profile-image">
+                {% endif %}
+            </div>
+            <div class="profile-info-header">
+                <div class="nickname-row">
+                    <div class="nickname">{{ profile_user.nick_name }}님</div>
+                    <div class="ddomung-badge">
+                        <span class="paw-icon">🐾</span>
+                        <span class="ddomung-number">{{ profile_user.ddomoong }}</span>
+                    </div>
+                </div>
+                <div class="user-intro">
+                    {% if profile_user.bio %}
+                        {{ profile_user.bio }}
+                    {% else %}
+                        안녕하세요! 뭉이와 함께 즐거운 번개 모임을 즐기고 있어요 🐶
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="profile-details">
+            <div class="detail-row">
+                <div class="detail-label">📍 활동 지역</div>
+                <div class="detail-value">
+                    {% if profile_user.location %}
+                        {{ profile_user.location }}
+                    {% else %}
+                        <span class="privacy-hidden">지역 미설정</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="detail-row">
+                <div class="detail-label">⚧ 성별</div>
+                <div class="detail-value">
+                    {% if profile_user.gender_visible %}
+                        {% if profile_user.gender == 'M' %}남성
+                        {% elif profile_user.gender == 'F' %}여성
+                        {% elif profile_user.gender == 'O' %}기타
+                        {% else %}<span class="privacy-hidden">미설정</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="privacy-hidden">비공개</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="detail-row">
+                <div class="detail-label">📅 가입일</div>
+                <div class="detail-value">{{ profile_user.date_joined|date:"Y년 m월 d일" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="button-section">
+        <a href="javascript:history.back()" class="btn btn-back">← 뒤로가기</a>
+    </div>
+</div>
+
+<div class="image-modal" id="imageModal" onclick="closeImageModal()">
+    <span class="close-modal">&times;</span>
+    <img class="modal-content" id="modalImage">
+</div>
+{% endblock %}

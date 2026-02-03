@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block myBlock %}
+    {% include 'moong/navigation.html' %}
+
+    <div id="login">
+        <form method="POST">
+            <img src="{% static 'images/moong logo-small.png' %}" style="width: 200px; margin-bottom: 20px;">
+            <h1>로그인</h1>
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-login">로그인</button>
+            <p style="margin-top: 20px; color: var(--moong-text-light); font-size: 14px;">
+                아직 회원이 아니신가요? <a href="{% url 'users:signup' %}" style="color: var(--moong-primary); font-weight: 600;">회원가입</a>
+            </p>
+        </form>
+    </div>
+{% endblock %}    

@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block myBlock %}
+    {% load static %}
+    <nav id="navigation">
+        <a href="{% url 'moong:main' %}" class="nav-logo">
+            <img src="{% static 'images/moonglogo_new.png' %}" alt="뭉이 로고">
+            <span class="nav-tagline">오늘 그냥 한 번 뭉쳐볼까? — 번개 모임 SNS, 뭉!</span>
+        </a>
+
+        <div class="nav-menu">
+            {% if user.is_authenticated %}
+                <a href="{% url 'moong:post_add' %}">
+                    <img src="{% static 'images/moong2.png' %}" class="nav-paw" alt="">
+                    글 작성
+                </a>
+                <a href="{% url 'users:mypage' %}">
+                    <img src="{{ user.profile_image.url }}" 
+                            style=
+                                "width: 45px;
+                                height: 45px;
+                                border-radius: 50%;
+                                border: 2px solid #90d1c6;
+                                object-fit: cover;">
+                    {{ user.nick_name }}님
+                </a>
+                <a href="{% url 'users:logout' %}">
+                    <img src="{% static 'images/logout.png' %}"                            
+                            style=
+                                "width: 50px;
+                                height: 50px;
+                                object-fit: cover;">
+                    로그아웃
+                </a>
+            {% else %}
+                <a href="{% url 'users:login' %}">
+                    <img src="{% static 'images/moong2.png' %}" class="nav-paw" alt="">
+                    로그인
+                </a>
+                <a href="{% url 'users:signup' %}">
+                    <img src="{% static 'images/moong2.png' %}" class="nav-paw" alt="">
+                    회원가입
+                </a>
+            {% endif %}
+        </div>
+    </nav>
+{% endblock %}

@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
-
+from django.utils import timezone
+from datetime import timedelta
+from django.db.models import Q
 
 class Post(models.Model):
     """게시글 모델"""
@@ -12,12 +14,12 @@ class Post(models.Model):
     ]
     
     # 게시글 기본 정보
-    title = models.CharField(max_length=200, null=True, blank=True, verbose_name='제목')
-    content = models.TextField(null=True, blank=True, verbose_name='내용')
+    title = models.CharField(max_length=200, null=False, blank=False, verbose_name='제목')
+    content = models.TextField(null=False, blank=False, verbose_name='내용')
     
     # 모임 정보
-    moim_date = models.DateField(null=True, blank=True, verbose_name='모임 날짜')
-    moim_time = models.TimeField(null=True, blank=True, verbose_name='모임 시간')
+    moim_date = models.DateField(null=False, blank=False, verbose_name='모임 날짜')
+    moim_time = models.TimeField(null=False, blank=False, verbose_name='모임 시간')
     location = models.ForeignKey(
         'locations.Location',
         on_delete=models.SET_NULL,
@@ -26,23 +28,24 @@ class Post(models.Model):
         verbose_name='모임 장소',
         db_column='location_id'
     )
-    models.CharField(max_length=255, verbose_name='모임 장소')
     
     # 작성자
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         verbose_name='작성자',
-        db_column='author'
+        db_column='author_id'
     )
     
     # 인원 관리
-    max_people = models.IntegerField(null=True, blank=True, verbose_name='최대 인원')
+    max_people = models.PositiveIntegerField(null=True, blank=True, default=0, verbose_name='최대 인원')
     
     # 상태 관리
-    is_closed = models.BooleanField(null=True, blank=True, default=False, verbose_name='마감 여부')
+    is_closed = models.BooleanField(null=True, blank=True, default=False, verbose_name='모임 마감 여부')
     is_cancelled = models.BooleanField(null=True, blank=True, default=False, verbose_name='폭파 여부')
-    save = models.BooleanField(null=True, blank=True, default=False, verbose_name='임시저장 여부')
+    moim_finished = models.BooleanField(null=True, blank=True, default=False, verbose_name='모집 완료 여부')
+
+    complete = models.BooleanField(null=True, blank=True, default=False, verbose_name='임시저장 여부')
     
     # 제한 정보
     gender_restriction = models.IntegerField(
@@ -78,8 +81,10 @@ class Post(models.Model):
     
     def get_approved_count(self):
         """승인된 참여자 수"""
-        return self.participations.filter(status='APPROVED').count()
-    
+        return self.participations.filter(Q(status='APPROVED') | Q(status='COMPLETED')).count()
+    def get_wait_count(self):
+        """ 대기자 수"""
+        return self.participations.filter(Q(status='PENDING') | Q(status='CANCELLED')).count() 
     def get_pending_count(self):
         """승인 대기 중인 신청자 수"""
         return self.participations.filter(status='PENDING').count()
@@ -98,12 +103,50 @@ class Post(models.Model):
     
     def is_published(self):
         """게시 여부 (임시저장 아님)"""
-        return self.save == True
+        return self.complete == True
     
     def get_gender_restriction_display_custom(self):
         """성별 제한 한글 표시"""
         gender_map = {0: '누구나', 1: '남성만', 2: '여성만'}
         return gender_map.get(self.gender_restriction, '누구나')
+    
+    def get_main_image(self):
+        """대표 이미지 (첫 번째 이미지)"""
+        return self.images.first()
+    
+    def get_image_count(self):
+        """이미지 개수"""
+        return self.images.count()
+    
+    def has_images(self):
+        """이미지 존재 여부"""
+        return self.images.exists()
+    
+    def display_time(self):
+        """
+        오늘 작성 → n시간 전 / n분 전
+        오늘이 아님 → YYYY.MM.DD
+        """
+        now = timezone.now()
+        created = self.create_time
+
+        # 날짜가 같은 경우
+        if now.date() == created.date():
+            diff = now - created
+
+            if diff < timedelta(minutes=1):
+                return "방금 전"
+            elif diff < timedelta(hours=1):
+                minutes = int(diff.total_seconds() // 60)
+                return f"{minutes}분 전"
+            else:
+                hours = int(diff.total_seconds() // 3600)
+                return f"{hours}시간 전"
+
+        # 날짜가 다른 경우
+        return created.strftime("%Y.%m.%d")
+
+
 
 
 class Participation(models.Model):
@@ -193,7 +236,7 @@ class Comment(models.Model):
     )
     
     # 댓글 내용
-    content = models.TextField(null=True, blank=True, verbose_name='댓글 내용')
+    content = models.TextField(null=False, blank=False, verbose_name='댓글 내용')
     
     # 주최자 여부
     is_author = models.BooleanField(null=True, blank=True, verbose_name='주최자 댓글 여부')
@@ -220,7 +263,7 @@ class Comment(models.Model):
         db_table = 'Comment'
     
     def __str__(self):
-        return f'{self.author.username}의 댓글 - {self.content[:20] if self.content else ""}'
+        return f'{self.author.nick_name}의 댓글 - {self.content[:20] if self.content else ""}'
     
     def save(self, *args, **kwargs):
         """저장 시 주최자 여부 자동 설정"""
@@ -237,7 +280,30 @@ class Comment(models.Model):
     def is_reply(self):
         """대댓글 여부"""
         return self.parent is not None
+    
+    def display_time(self):
+        """
+        오늘 작성 → n시간 전 / n분 전
+        오늘이 아님 → YYYY.MM.DD
+        """
+        now = timezone.now()
+        created = self.create_time
 
+        # 날짜가 같은 경우
+        if now.date() == created.date():
+            diff = now - created
+
+            if diff < timedelta(minutes=1):
+                return "방금 전"
+            elif diff < timedelta(hours=1):
+                minutes = int(diff.total_seconds() // 60)
+                return f"{minutes}분 전"
+            else:
+                hours = int(diff.total_seconds() // 3600)
+                return f"{hours}시간 전"
+
+        # 날짜가 다른 경우
+        return created.strftime("%Y.%m.%d")
 
 class Hashtag(models.Model):
     """해시태그 모델"""
@@ -245,8 +311,8 @@ class Hashtag(models.Model):
     name = models.CharField(
         max_length=50,
         unique=True,
-        null=True,
-        blank=True,
+        null=False,
+        blank=False,
         verbose_name='해시태그명'
     )
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='생성 시간')
@@ -295,3 +361,57 @@ class PostHashtag(models.Model):
     
     def __str__(self):
         return f'{self.post.title} - #{self.hashtag.name}'
+    
+
+class Image(models.Model):  
+    post = models.ForeignKey(
+        'Post',
+        on_delete=models.CASCADE,
+        related_name='images',
+        verbose_name='게시글',
+        db_column='post_id'
+    )
+    order = models.IntegerField(default=0, verbose_name='순서')
+    image = models.ImageField(
+        upload_to='post_images/%Y/%m/%d/',
+        null=True,
+        blank=True,
+        verbose_name='이미지'
+    )
+    create_time = models.DateTimeField(auto_now_add=True, verbose_name='업로드 시간')
+    
+    class Meta:
+        ordering = ['order', 'create_time']
+        verbose_name = '게시글 이미지'
+        verbose_name_plural = '게시글 이미지'
+        db_table = 'image'
+    
+    def __str__(self):
+        return f'{self.post.title} - 이미지 {self.order}'    
+    
+class Ddomoong(models.Model):
+    """참가자에게 또뭉 주기"""
+    participation = models.ForeignKey(
+        'Participation',
+        on_delete=models.CASCADE,
+        related_name='ddomoongs',
+        db_column='participation_id'
+    )
+    from_user = models.ForeignKey(
+        'users.User',  # users 앱의 User 모델
+        on_delete=models.CASCADE,
+        related_name='given_ddomoongs',
+        db_column='from_user_id'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_column='create_time')
+    
+    class Meta:
+        db_table = 'Ddomoong'  # 다른 테이블명 스타일에 맞춤
+        unique_together = ('participation', 'from_user')
+        indexes = [
+            models.Index(fields=['participation']),
+            models.Index(fields=['from_user']),
+        ]
+    
+    def __str__(self):
+        return f"{self.from_user.nick_name} -> {self.participation.user.nick_name}"

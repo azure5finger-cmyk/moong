@@ -1,0 +1,73 @@
+<div class="a-post-card">
+    <div class="a-post-header">
+        <a href="{% url 'users:user_profile' post.author.id %}" class="author-link">
+            {{ post.author.nick_name }}
+        </a>
+        <span class="post-date">{{ post.display_time }}</span>
+    </div>
+
+    <div class="a-post-content">
+        <a href="{% url 'moong:post_detail' post.id %}" class="title-banner {% if post.is_closed and not post.moim_finished %}confirmed{% elif post.moim_finished %}finished{% elif post.is_cancelled %}cancelled{% else %}recruiting{% endif %}">
+            <h4>{{ post.title }} <span class="title-arrow">→</span></h4>
+            <div class="banner-info">
+                {% if post.is_closed and not post.moim_finished %}
+                    <p class="banner-main">모집이 확정되었습니다</p>
+                    <p class="banner-sub">확정 인원: <strong>{{ post.get_approved_count }}명</strong>{% if post.max_people %} / {{ post.max_people }}명{% endif %} · {{ post.moim_date }} {{ post.moim_time }}</p>
+                {% elif post.moim_finished %}
+                    <p class="banner-main">완료된 모임</p>
+                    <p class="banner-sub">이 모임은 성공적으로 완료되었습니다</p>
+                {% elif post.is_cancelled %}
+                    <p class="banner-main">이 모임은 취소되었습니다</p>
+                    <p class="banner-sub">주최자에 의해 취소된 모임입니다</p>
+                {% else %}
+                    <p class="banner-main">모집 중입니다</p>
+                    <p class="banner-sub">현재 인원: <strong>{{ post.get_approved_count }}명</strong>{% if post.max_people %} / {{ post.max_people }}명{% endif %}</p>
+                {% endif %}
+            </div>
+        </a>
+        <br>
+        <p>{{ post.content|truncatechars:100 }}</p>
+    </div>
+    <div class="a-post-info">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <span>{{ post.location }}</span>
+        </div>
+    </div>
+
+    {% if post.location or post.images.first %}
+    <div class="a-post-media-row">
+        {% if post.location %}
+        <div class="a-post-media-col">
+            <div class="kakao-map" data-kakao-address="{{ post.location }}"></div>
+        </div>
+        {% endif %}
+        {% if post.images.first %}
+        <div class="a-post-images a-post-media-col">
+            <div class="tap-slider">
+                {% for image in post.images.all %}
+                    <img src="{{ image.image.url }}"
+                         class="post-image tap-slide {% if forloop.first %}active{% endif %}">
+                {% endfor %}
+                {% if post.images.count > 1 %}
+                    <div class="tap-prev"></div>
+                    <div class="tap-next"></div>
+                    <div class="tap-dots">
+                        {% for image in post.images.all %}
+                            <span class="tap-dot {% if forloop.first %}active{% endif %}"></span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    <br>
+    <div class="a-post-tags">
+        {% for tag in post.hashtags.all %}
+            <a href="{% url 'moong:tag_feeds' tag.name %}" class="tag-link">#{{ tag.name }}</a>
+        {% endfor %}
+    </div>
+    <hr>
+    {% include "moong/comments.html" with is_a_post=True comments=post.comments.filter parent__isnull=True %}
+</div>
