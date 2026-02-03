@@ -2508,13 +2508,14 @@ label[for="images"]:hover {
 .post-detail-card > div > ul {
     list-style: none;
     padding: 0 24px;
-    margin: 0;
+    margin: 0 auto;  /* 가운데 배치 */
+    max-width: fit-content;  /* 내용 크기만큼만 */
 }
 
 .post-detail-card > div > ul li {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;  /* 왼쪽 정렬 (아이디 시작점 같게) */
     flex-wrap: wrap;
     gap: 8px;
     padding: 10px 0;
